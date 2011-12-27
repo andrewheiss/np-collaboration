@@ -11,6 +11,13 @@ resources = ['A', 'B', 'C', 'D']
 # Type the quantities of each resource
 resource_quantities = [6, 6, 2, 2]
 
+# Objectives
+objectives = ['a1', 'a2', 'b1', 'b2', 'c1', 'c2', 'd1', 'd2']
+
+objective_quantities = [15, 15, 5, 5, 15, 15, 5, 5]
+objective_values = [20, 10, 20, 10, 20, 10, 20, 10]
+
+
 # Turn on random allocation
 shuffle = False
 
