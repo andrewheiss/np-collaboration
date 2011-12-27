@@ -5,15 +5,11 @@ import random
 # Set up the simulation
 #------------------------
 
-# Type the number of simulated players
-num_players = 16
-
 # Type the names of the simulated resources
 resources = ['A', 'B', 'C', 'D']
 
 # Type the quantities of each resource
-# `quantities` must equal the number of players
-quantities = [6, 6, 2, 2]
+resource_quantities = [6, 6, 2, 2]
 
 # Turn on random allocation
 shuffle = False
@@ -25,17 +21,18 @@ shuffle = False
 #---------------------------------------------------
 
 # Build the players list
+num_players = sum(resource_quantities)
 players = range(num_players)
 
-# Shuffle the lists if shuffling enabled
+# Shuffle the lists if shuffling is enabled
 if shuffle == True:
     random.shuffle(players)
-    random.shuffle(quantities)
+    random.shuffle(resource_quantities)
     random.shuffle(resources)
 
 # Build the resource pool dictionary
 # e.g.: {'A': 6, 'C': 2, 'B': 6, 'D': 2}
-resource_pool = dict(zip(resources, quantities))
+resource_pool = dict(zip(resources, resource_quantities))
 
 # Initialize empty combined dictionary
 combined = {}
