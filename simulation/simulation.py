@@ -42,7 +42,7 @@ count = 0
 
 # Loop through `resource_pool` and assign resources to each player. 
 # Player numbers are assigned using `count` as an index to `combined`
-for resource, quantity in resource_pool.items():
+for resource, quantity in sorted(resource_pool.items()):
     for i in range(quantity):
         combined[players[count]] = resource
         count += 1
