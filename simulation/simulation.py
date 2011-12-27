@@ -44,7 +44,7 @@ resource_pool = dict(zip(resources, resource_quantities))
 # Initialize empty combined dictionary
 combined = {}
 
-# `count` keeps track of the number of times a resource is allocated to a player. It should only ever go up to `num_players` as long as the quantities of resources are set correctly
+# `count` keeps track of the number of times a resource is allocated to a player. It will only ever go up to `num_players`
 count = 0
 
 # Loop through `resource_pool` and assign resources to each player. 
