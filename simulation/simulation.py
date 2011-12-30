@@ -1,4 +1,13 @@
 #!/usr/bin/env python
+#
+# Nonprofit collaboration simulation
+#-------------------------------------
+# Copyright 2011-12
+# Eva Witesman and Andrew Heiss
+# Romney Institute of Public Management
+# Brigham Young University
+#
+
 import random
 
 #------------------------
@@ -28,11 +37,32 @@ shuffle = False
 #---------------------------------------------------
 
 class Player:
-    """docstring for Player"""
+    """A player is the primary element of the simulation and is responsible for maximizing its personal or societal value by trading objectives with other players
+    
+    Attributes:
+        name: The player's name
+        resource: The name of a resource (i.e. "A")
+        objectives: A dictionary of lists, correposnding to the objective index, objective name, and objective value. (i.e. {0: ['a1', 20], 1: ['a1', 20], 2: ['a1', 20], 3: ['a1', 20], 4: ['a1', 20]})
+    
+    Returns:
+        A new player object
+    """
+    
     def __init__(self, name, resource, objectives):
+        """Creates a new Player object
+        
+        Creates a player based on resources and objectives created beforehand (i.e. players should be created as part of a loop that allocates resources and objectives).
+        
+        Args:
+            name: The player's name
+            resource: The name of a resource (i.e. "A")
+            objectives: A list of objective indicies (i.e. [1, 2, 3, 4, 5])
+        
+        Raises:
+            No errors yet... I should probably build some sort of error handling eventually...
+        """
         self.name = name
         self.resource = resource
-        self.objectives = objectives
         
         # Build the dictionary of lists
         # {`index`: [`objective name`, `objective value`]}
@@ -41,8 +71,6 @@ class Player:
             self.objectives[i] = [objs_table[i]['name'], objs_table[i]['value']]
     
     def currentTotal(self):
-        """docstring for currentTotal"""
-        pass
         """Sum the values of all objectives that match a player's assigned resource"""
         total = 0
         for index, details in self.objectives.items():
@@ -59,7 +87,9 @@ def listPlayers():
     """Print a list of all the players, their resources, objectives, and scores"""
     print '----- Players -----'
     for i, player in players.items():
+        print "Name:", player.name
         print "Points:", player.currentTotal()
+        print "Resource:", player.resource
         print "Objectives (index [objective name, objective value]):", "\n\t", player.objectives, "\n"
 
 def listPlayersPseudoTable():
@@ -125,15 +155,5 @@ for resource, quantity in sorted(resource_pool.items()):
         stop += objs_per_player
 
 
-
-# Print out players and their assignments
-print '----- Players -----'
-for i, p in players.items():
-    total = 0
-    obj_names = []
-    for i in p.objectives:
-        total += objs_table[i]['value']
-        obj_names.append(objs_table[i]['name'])
-    print p.name, p.resource, p.objectives, obj_names, total
 # Print out players
 listPlayers()
