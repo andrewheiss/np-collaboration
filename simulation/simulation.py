@@ -33,6 +33,12 @@ class Player:
         self.name = name
         self.resource = resource
         self.objectives = objectives
+        
+        # Build the dictionary of lists
+        # {`index`: [`objective name`, `objective value`]}
+        self.objectives = {}
+        for i in objectives:
+            self.objectives[i] = [objs_table[i]['name'], objs_table[i]['value']]
     
     def currentTotal(self):
         """docstring for currentTotal"""
