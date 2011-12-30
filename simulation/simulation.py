@@ -98,6 +98,14 @@ def listPlayersPseudoTable():
     for i, player in players.items():
         print player.name, player.resource, player.objectives, player.currentTotal()
 
+def printObjectivesPool():
+    """List all the objectives and their corresponding value"""
+    print '----- Objective pool -----'
+    count = 0
+    for row in objs_table:
+        print "%02d"%count, row['name'], row['value']
+        count += 1
+
 
 # Set up other variables
 num_players = sum(resource_quantities)
@@ -111,11 +119,6 @@ objs_table = []
 for i in range(len(objective_names)):
     for j in range(objective_quantities[i]):
         objs_table.append({'name':objective_names[i], 'value':objective_values[i]})
-
-# print objs_table[0]['name']
-# for row in objs_table:
-#     print row['name'], row['value']
-
 
 
 # Initialize empty players dictionary (only a dictionary so it can be indexed)
