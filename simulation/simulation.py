@@ -53,6 +53,21 @@ class Player:
     def dropObjective(self):
         """docstring for dropObjective"""
         pass
+    
+
+def listPlayers():
+    """Print a list of all the players, their resources, objectives, and scores"""
+    print '----- Players -----'
+    for i, player in players.items():
+        print "Points:", player.currentTotal()
+        print "Objectives (index [objective name, objective value]):", "\n\t", player.objectives, "\n"
+
+def listPlayersPseudoTable():
+    """Print a list of all the players, their resources, objectives, and scores in a table-like format"""
+    print '----- Players -----'
+    for i, player in players.items():
+        print player.name, player.resource, player.objectives, player.currentTotal()
+
 
 # Set up other variables
 num_players = sum(resource_quantities)
@@ -120,3 +135,5 @@ for i, p in players.items():
         total += objs_table[i]['value']
         obj_names.append(objs_table[i]['name'])
     print p.name, p.resource, p.objectives, obj_names, total
+# Print out players
+listPlayers()
