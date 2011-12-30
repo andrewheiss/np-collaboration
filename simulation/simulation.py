@@ -43,6 +43,12 @@ class Player:
     def currentTotal(self):
         """docstring for currentTotal"""
         pass
+        """Sum the values of all objectives that match a player's assigned resource"""
+        total = 0
+        for index, details in self.objectives.items():
+            if self.resource == details[0][0].upper():
+                total += details[1]
+        return total
     
     def dropObjective(self):
         """docstring for dropObjective"""
