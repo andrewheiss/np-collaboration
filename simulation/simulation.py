@@ -82,7 +82,19 @@ class Player:
     def dropObjective(self):
         """docstring for dropObjective"""
         pass
+
+
+class Community:
+    """docstring for World"""
+    def __init__(self, players):
+        self.players = players
     
+    def total(self):
+        """docstring for globalTotal"""
+        total = 0
+        for i, player in players.items():
+            total += player.currentTotal()
+        return total
 
 
 # Magic resource allocation functions  
@@ -125,6 +137,7 @@ def build_resource_pool(resources, players):
     return dict(sorted(collections.Counter(itertools.islice(r, players)).items())) 
 
 
+# Faux pretty printing functions
 def listPlayers():
     """Print a list of all the players, their resources, objectives, and scores"""
     print '----- Players -----'
@@ -195,6 +208,9 @@ for resource, quantity in sorted(resource_pool.items()):
         start += objs_per_player
         stop += objs_per_player
 
+
+community = Community(players=players)
+print "Total community social value: " + str(community.total()) + "\n"
 
 # Print out players
 listPlayers()
