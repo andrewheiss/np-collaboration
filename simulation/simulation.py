@@ -8,17 +8,18 @@
 # Brigham Young University
 #
 
+import collections
+import itertools
+import string
 import random
 
 #------------------------
 # Set up the simulation
 #------------------------
 
-# Type the names of the simulated resources
-resources = ['A', 'B', 'C', 'D']
-
-# Type the quantities of each resource
-resource_quantities = [6, 6, 2, 2]
+num_players = 16
+num_resources = 4
+approximate_high_low_resource_ratio = 3
 
 # Objectives
 objs_per_player = 5
@@ -83,6 +84,42 @@ class Player:
         pass
     
 
+
+# Magic resource allocation functions  
+def create_distribution_ratios(prop_low, prop_high):
+    """Add a fraction priority to the given high frequency resources
+    
+    Args:
+        prop_high: A string of letters that will have a high frequency distribution (e.g. "AB")
+        prop_low: A string of letters that will have a low frequency distribution (e.g. "CDE")
+    """
+    prop_high_adjusted = prop_high * approximate_high_low_resource_ratio
+        for resource in prop_low:
+            yield resource
+        for resource in prop_high_adjusted:
+            yield resource
+
+def build_resource_pool(resources, players):
+    """Creates a pool of resources with high and low distributions according to the frequency in `approximate_high_low_resource_ratio`
+    
+    For example, if there are 16 players, with 4 different types of objectives, and an approximate ratio of 3:1, the pool will be a dictionary distributed like so:
+    {'A': 6, 'B': 6, 'C': 2, 'D': 2}
+    with A and B as high frequency resources and C and D as low frequency
+    
+    Args:
+        resources: The number of resource types
+        players: The number of players in the simulation
+    Returns: 
+    """
+    letters = string.ascii_uppercase[:resources]
+    if shuffle == True:
+        letters = ''.join(random.sample(letters, len(letters)))
+    high_count = resources // 2
+    prop_high, prop_low = letters[:high_count], letters[high_count:]
+    r = create_distribution_ratios(prop_low, prop_high)
+    return dict(sorted(collections.Counter(itertools.islice(r, players)).items())) 
+
+
 def listPlayers():
     """Print a list of all the players, their resources, objectives, and scores"""
     print '----- Players -----'
@@ -107,8 +144,10 @@ def printObjectivesPool():
         count += 1
 
 
+# Create the resource pool
+resource_pool = build_resource_pool(num_resources, num_players)
+
 # Set up other variables
-num_players = sum(resource_quantities)
 total_objs = objs_per_player * num_players
 
 # Build the players list and index of objectives
@@ -128,12 +167,6 @@ players = {}
 if shuffle == True:
     random.shuffle(players_list)
     random.shuffle(objs_index)
-    random.shuffle(resource_quantities)
-    random.shuffle(resources)
-
-# Build the resource pool dictionary
-# e.g.: {'A': 6, 'C': 2, 'B': 6, 'D': 2}
-resource_pool = dict(zip(resources, resource_quantities))
 
 # `count` keeps track of the number of times a resource is allocated to a player. It will only ever go up to `num_players`
 count = 0
