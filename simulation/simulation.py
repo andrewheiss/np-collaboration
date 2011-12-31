@@ -94,6 +94,7 @@ def create_distribution_ratios(prop_low, prop_high):
         prop_low: A string of letters that will have a low frequency distribution (e.g. "CDE")
     """
     prop_high_adjusted = prop_high * approximate_high_low_resource_ratio
+    while True:
         for resource in prop_low:
             yield resource
         for resource in prop_high_adjusted:
@@ -109,11 +110,15 @@ def build_resource_pool(resources, players):
     Args:
         resources: The number of resource types
         players: The number of players in the simulation
+    
     Returns: 
+        A dictionary: {'resource name': quantity, ...}
     """
     letters = string.ascii_uppercase[:resources]
+
     if shuffle == True:
         letters = ''.join(random.sample(letters, len(letters)))
+
     high_count = resources // 2
     prop_high, prop_low = letters[:high_count], letters[high_count:]
     r = create_distribution_ratios(prop_low, prop_high)
