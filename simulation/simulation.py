@@ -97,44 +97,66 @@ class Community:
         return total
 
 
-# Magic resource allocation functions  
-def create_distribution_ratios(prop_low, prop_high):
-    """Add a fraction priority to the given high frequency resources
-    
-    Args:
-        prop_high: A string of letters that will have a high frequency distribution (e.g. "AB")
-        prop_low: A string of letters that will have a low frequency distribution (e.g. "CDE")
-    """
-    prop_high_adjusted = prop_high * approximate_high_low_resource_ratio
-    while True:
-        for resource in prop_low:
-            yield resource
-        for resource in prop_high_adjusted:
-            yield resource
-
-def build_resource_pool(resources, players):
+class ResourcePool:
     """Creates a pool of resources with high and low distributions according to the frequency in `approximate_high_low_resource_ratio`
     
     For example, if there are 16 players, with 4 different types of objectives, and an approximate ratio of 3:1, the pool will be a dictionary distributed like so:
     {'A': 6, 'B': 6, 'C': 2, 'D': 2}
     with A and B as high frequency resources and C and D as low frequency
     
-    Args:
-        resources: The number of resource types
-        players: The number of players in the simulation
+    Attributes:
+        high: A string of the high frequency resources (e.g. "AB")
+        low: A string of the low frequency resources (e.g. "CD")
+        pool: A dictionary structured like {'resource name': quantity, ...}
     
     Returns: 
-        A dictionary: {'resource name': quantity, ...}
+        A resource pool object
     """
-    letters = string.ascii_uppercase[:resources]
+    def __init__(self, resources, players):
+        """Create the resource pool object
+        
+        Args:
+            resources: The number of resource types
+            players: The number of players in the simulation
+        """
+        divided = self.divide_high_low(resources)
+        self.high = divided.high
+        self.low = divided.low
+        r = self.create_distribution_ratios(divided.low, divided.high)
+        self.pool = dict(sorted(collections.Counter(itertools.islice(r, players)).items()))
 
-    if shuffle == True:
-        letters = ''.join(random.sample(letters, len(letters)))
+    def create_distribution_ratios(self, prop_low, prop_high):
+        """Add a fraction priority to the given high frequency resources
 
-    high_count = resources // 2
-    prop_high, prop_low = letters[:high_count], letters[high_count:]
-    r = create_distribution_ratios(prop_low, prop_high)
-    return dict(sorted(collections.Counter(itertools.islice(r, players)).items())) 
+        Args:
+            prop_high: A string of letters that will have a high frequency distribution (e.g. "AB")
+            prop_low: A string of letters that will have a low frequency distribution (e.g. "CDE")
+        """
+        prop_high_adjusted = prop_high * approximate_high_low_resource_ratio
+        while True:
+            for resource in prop_low:
+                yield resource
+            for resource in prop_high_adjusted:
+                yield resource
+
+    def divide_high_low(self, resources):
+        """Divide the provided resources into high and low frequencies
+        
+        Args:
+            resources: The number of resource types
+        
+        Returns:
+            A named tuple of high and low frequency resources (e.g. (high='AB', low='CD'))
+        """
+        DivdedResources = collections.namedtuple('Resources', ['high', 'low'])
+        letters = string.ascii_uppercase[:resources]
+        high_count = resources // 2
+
+        if shuffle == True:
+            letters = ''.join(random.sample(letters, len(letters)))
+
+        prop_high, prop_low = letters[:high_count], letters[high_count:]
+        return DivdedResources(prop_high, prop_low)
 
 
 # Faux pretty printing functions
@@ -163,7 +185,7 @@ def printObjectivesPool():
 
 
 # Create the resource pool
-resource_pool = build_resource_pool(num_resources, num_players)
+resource_pool = ResourcePool(num_resources, num_players).pool
 
 # Set up other variables
 total_objs = objs_per_player * num_players
