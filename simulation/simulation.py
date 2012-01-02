@@ -19,23 +19,25 @@ import random
 
 num_players = 16
 num_resources = 4
+num_objs_per_player = 5
+value_high = 20
+value_low = 10
 approximate_high_low_resource_ratio = 3
-
-# Objectives
-objs_per_player = 5
-
-# Pseudo database of objectives
-objective_names = ['a1', 'a2', 'b1', 'b2', 'c1', 'c2', 'd1', 'd2']
-objective_quantities = [15, 15, 5, 5, 15, 15, 5, 5]
-objective_values = [20, 10, 20, 10, 20, 10, 20, 10]
+approximate_high_low_objective_ratio = 3
 
 # Turn on random allocation
 shuffle = False
 
 
 #---------------------------------------------------
+#---------------------------------------------------
 # Run the simulation. Do not edit below this line.
 #---------------------------------------------------
+#---------------------------------------------------
+
+#----------------------
+# Objects and methods
+#----------------------
 
 class Player:
     """A player is the primary element of the simulation and is responsible for maximizing its personal or societal value by trading objectives with other players
@@ -159,6 +161,86 @@ class ResourcePool:
         return DivdedResources(prop_high, prop_low)
 
 
+class ObjectivePool:
+    """Create a pool of objectives that corresponds to the distribution of the resource pool. 
+    
+    The objectives that correspond to the two frequencies of resources (high and low) are split into two types of prevalence (high and low). If there are two high frequency resources A and B, there will be four objectives: a1, a2, b1, and b2. 
+    
+    A subscript of 1 indicates high value, while a subscript of 2 indicates low value. 
+    The objectives for resource A will be more prevalent than the objectives for resource B according to the ratio provided in `approximate_high_low_objective_ratio`
+    
+    For example, with a resource pool of {'A': 6, 'B': 6, 'C': 2, 'D': 2} and five objectives per player, the high frequency resources A and B will be split into highly prevalent objectives (15 a1s and a2s) and not-as-prevalent objectives (5 b1s and b2s). Low frequency resources will be split similarly (15 c1/2s, 5 d1/2s). 
+    
+    Attributes:
+        num_objs: The total number of objectives in the pool (number of players * number of objectives per player)
+        pool: A dictionary of objective distriubtions (e.g. {'a1': 15, 'a2': 15, 'b1': 5, 'b2': 5, 'c2': 15, 'c1': 15, 'd2': 5, 'd1': 5})
+        table: A list of dictionaries with each objective name and value (e.g. [{'name': 'a1', 'value': 20},... {'name': 'c2', 'value': 10},...])
+    
+    Returns: 
+        An objective pool object
+    """
+    def __init__(self, resource_pool):
+        """Create the objective pool object
+        
+        Args:
+            resource_pool: A ResourcePool object
+        """
+        self.num_objs = num_players * num_objs_per_player
+        
+        # Switch the first and last elements of the high and low frequency lists
+        list_high = list(resource_pool.high)
+        list_low = list(resource_pool.low)
+        
+        # Calculate half of list length
+        temp1 = len(list_high)/2 
+        temp2 = len(list_low)/2
+        
+        # Create new lists based on slices of the high and low lists
+        new_high = list_high[:temp1] + list_low[:temp2]
+        new_low = list_high[temp1:] + list_low[temp2:]
+
+        # Split all the resources into two objectives
+        # Converts "A" to "a1" and "a2"
+        objectives_high = []
+        for i in new_high:
+            for j in range(1,3):
+                objectives_high.append(i.lower() + str(j))
+
+        objectives_low = []
+        for i in new_low:
+            for j in range(1,3):
+                objectives_low.append(i.lower() + str(j))
+
+        # Distribute the objectives to the newly created objectives
+        o = self.create_distribution_ratios(objectives_low, objectives_high)
+        self.pool = dict(sorted(collections.Counter(itertools.islice(o, self.num_objs)).items()))
+
+        # Create a list of named dictionary pairs for each objective in the pool
+        objs_table = []
+        for i in self.pool.items():
+            for j in range(i[1]):
+                if int(i[0][1]) == 1: # if the objective's subscript is 1 (e.g. "a1")
+                    value = value_high
+                else:
+                    value = value_low
+                objs_table.append({'name':i[0], 'value':value})
+        self.table = objs_table
+
+    def create_distribution_ratios(self, prop_low, prop_high):
+        """Add a fraction priority to the given high frequency resources
+
+        Args:
+            prop_high: A string of letters that will have a high frequency distribution (e.g. "AB")
+            prop_low: A string of letters that will have a low frequency distribution (e.g. "CDE")
+        """
+        prop_high_adjusted = prop_high * approximate_high_low_objective_ratio
+        while True:
+            for resource in prop_low:
+                yield resource
+            for resource in prop_high_adjusted:
+                yield resource
+
+
 # Faux pretty printing functions
 def listPlayers():
     """Print a list of all the players, their resources, objectives, and scores"""
@@ -184,24 +266,26 @@ def printObjectivesPool():
         count += 1
 
 
-# Create the resource pool
-resource_pool = ResourcePool(num_resources, num_players).pool
+#------------------------------------------------
+#-------------
+# Procedures
+#-------------
 
-# Set up other variables
-total_objs = objs_per_player * num_players
+# Create the resource and objective pools
+resource_pool = ResourcePool(num_resources, num_players)
+objective_pool = ObjectivePool(resource_pool)
+objs_table = objective_pool.table
 
-# Build the players list and index of objectives
-players_list = range(num_players)
-objs_index = range(total_objs)
-
-objs_table = []
-for i in range(len(objective_names)):
-    for j in range(objective_quantities[i]):
-        objs_table.append({'name':objective_names[i], 'value':objective_values[i]})
-
+#---------------------------------
+# Allocate pool items to players
+#---------------------------------
 
 # Initialize empty players dictionary (only a dictionary so it can be indexed)
 players = {}
+
+# Build the players list and index of objectives
+players_list = range(num_players)
+objs_index = range(objective_pool.num_objs)
 
 # Shuffle the lists if shuffling is enabled
 if shuffle == True:
@@ -213,12 +297,11 @@ count = 0
 
 # Initialize starting and stopping variables for slicing the objectives list
 start = 0
-stop = objs_per_player
+stop = num_objs_per_player
 
-
-# Loop through `resource_pool` and assign resources to each player. 
+# Loop through the resource and objective pools and assign resources and objectives to each player. 
 # Player numbers are assigned using `count` as an index to `combined`
-for resource, quantity in sorted(resource_pool.items()):
+for resource, quantity in sorted(resource_pool.pool.items()):
     for i in range(quantity):
         # Create a new player and add it to the players dictionary
         players[players_list[count]] = Player(name="Player %02d"%players_list[count],
@@ -227,10 +310,10 @@ for resource, quantity in sorted(resource_pool.items()):
         
         # Increment everything
         count += 1
-        start += objs_per_player
-        stop += objs_per_player
+        start += num_objs_per_player
+        stop += num_objs_per_player
 
-
+# Create a community of players
 community = Community(players=players)
 print "Total community social value: " + str(community.total()) + "\n"
 
