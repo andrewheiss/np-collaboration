@@ -89,7 +89,7 @@ class Player(Process):
     
     def report(self):        
         objectives = ', '.join('%s' % obj[0] for obj in self.objectives.values())
-        print "I am %s; I have resource %s; I have objectives %s; and my total value is %s.\n"%(self.name, self.resource, objectives, self.currentTotal())
+        print "I am %s; I have resource %s; I have objectives %s; and my total value is %s."%(self.name, self.resource, objectives, self.currentTotal())
         yield hold, self
 
 
