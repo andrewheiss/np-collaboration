@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#
+# 
 # Nonprofit collaboration simulation
 #-------------------------------------
 # Copyright 2011-12
@@ -12,6 +12,7 @@ import collections
 import itertools
 import string
 import random
+from SimPy.Simulation import *
 
 #------------------------
 # Set up the simulation
@@ -39,7 +40,7 @@ shuffle = False
 # Objects and methods
 #----------------------
 
-class Player:
+class Player(Process):
     """A player is the primary element of the simulation and is responsible for maximizing its personal or societal value by trading objectives with other players
     
     Attributes:
@@ -50,8 +51,8 @@ class Player:
     Returns:
         A new player object
     """
-    
-    def __init__(self, name, resource, objectives):
+
+    def __init__(self, sim, name, resource, objectives):
         """Creates a new Player object
         
         Creates a player based on resources and objectives created beforehand (i.e. players should be created as part of a loop that allocates resources and objectives).
@@ -64,6 +65,7 @@ class Player:
         Raises:
             No errors yet... I should probably build some sort of error handling eventually...
         """
+        Process.__init__(self, name, sim=sim)
         self.name = name
         self.resource = resource
         
@@ -84,6 +86,11 @@ class Player:
     def dropObjective(self):
         """docstring for dropObjective"""
         pass
+    
+    def report(self):        
+        objectives = ', '.join('%s' % obj[0] for obj in self.objectives.values())
+        print "I am %s; I have resource %s; I have objectives %s; and my total value is %s.\n"%(self.name, self.resource, objectives, self.currentTotal())
+        yield hold, self
 
 
 class Community:
@@ -280,42 +287,57 @@ objs_table = objective_pool.table
 # Allocate pool items to players
 #---------------------------------
 
-# Initialize empty players dictionary (only a dictionary so it can be indexed)
-players = {}
+class CollaborationModel(Simulation):
+    def __init__(self):
+        Simulation.__init__(self)
 
-# Build the players list and index of objectives
-players_list = range(num_players)
-objs_index = range(objective_pool.num_objs)
+    def run(self):
+        self.initialize()
+        self.build()
+        for player in self.players.values():
+            self.activate(player, player.report())
+        self.simulate(until=400.0)
+    
+    def build(self):
+        # Initialize empty players dictionary (only a dictionary so it can be indexed)
+        players = {}
 
-# Shuffle the lists if shuffling is enabled
-if shuffle == True:
-    random.shuffle(players_list)
-    random.shuffle(objs_index)
+        # Build the players list and index of objectives
+        players_list = range(num_players)
+        objs_index = range(objective_pool.num_objs)
 
-# `count` keeps track of the number of times a resource is allocated to a player. It will only ever go up to `num_players`
-count = 0
+        # Shuffle the lists if shuffling is enabled
+        if shuffle == True:
+            random.shuffle(players_list)
+            random.shuffle(objs_index)
 
-# Initialize starting and stopping variables for slicing the objectives list
-start = 0
-stop = num_objs_per_player
+        # `count` keeps track of the number of times a resource is allocated to a player. It will only ever go up to `num_players`
+        count = 0
 
-# Loop through the resource and objective pools and assign resources and objectives to each player. 
-# Player numbers are assigned using `count` as an index to `combined`
-for resource, quantity in sorted(resource_pool.pool.items()):
-    for i in range(quantity):
-        # Create a new player and add it to the players dictionary
-        players[players_list[count]] = Player(name="Player %02d"%players_list[count],
-                                              resource=resource, 
-                                              objectives=objs_index[start:stop:1])
+        # Initialize starting and stopping variables for slicing the objectives list
+        start = 0
+        stop = num_objs_per_player
         
-        # Increment everything
-        count += 1
-        start += num_objs_per_player
-        stop += num_objs_per_player
+        # Loop through the resource and objective pools and assign resources and objectives to each player. 
+        # Player numbers are assigned using `count` as an index to `combined`
+        for resource, quantity in sorted(resource_pool.pool.items()):
+            for i in range(quantity):
+                # Create a new player and add it to the players dictionary
+                players[players_list[count]] = Player(name="Player %02d"%players_list[count], resource=resource, objectives=objs_index[start:stop:1], sim=self)
 
-# Create a community of players
-community = Community(players=players)
-print "Total community social value: " + str(community.total()) + "\n"
+                # Increment everything
+                count += 1
+                start += num_objs_per_player
+                stop += num_objs_per_player
+        
+        self.players = players
 
-# Print out players
-listPlayers()
+CollaborationModel().run()
+
+
+# # Create a community of players
+# community = Community(players=players)
+# print "Total community social value: " + str(community.total()) + "\n"
+
+# # Print out players
+# listPlayers()
