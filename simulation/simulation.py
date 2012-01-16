@@ -87,11 +87,21 @@ class Player(Process):
         """docstring for dropObjective"""
         pass
     
+    def joinTeam(self, team):
+        """Add a player to a team... eventually only after checking to see if the alliance is beneficial and after dropping an objective"""
+        # Drop an objective
+        self.team.removePlayer(self)    # Leave current team
+        team.addPlayer(self)            # Join new team
+        self.team = team                # Reassign new team to player attributes
+    
+    def setInitialTeam(self, team):
+        self.team = team
+    
     def report(self):        
         objectives = ', '.join('%s' % obj[0] for obj in self.objectives.values())
-        print "I am %s; I have resource %s; I have objectives %s; and my total value is %s."%(self.name, self.resource, objectives, self.currentTotal())
+        print "I am %s; I have resource %s; I have objectives %s; I'm on team %s; and my total value is %s."%(self.name, self.resource, objectives, self.team.name, self.currentTotal()) 
         yield hold, self
-
+        
 
 class Community:
     """docstring for World"""
@@ -273,6 +283,53 @@ def printObjectivesPool():
         count += 1
 
 
+class Team:
+    """A team is a collection of players that have decided to collaborate in order to achieve higher personal or societal value. 
+    
+    Attributes:
+        name: The team's name
+        players: A list of player objects that are part of the team
+    
+    Returns:
+        A new team object
+    """
+    def __init__(self, player, name):
+        """Creates a new team object
+        
+        Creates a new team consisting of exactly one player
+        
+        Args:
+            name: The player's name
+            player: A single player object
+        
+        Raises:
+            No errors yet... 
+        """
+        self.name = name
+        self.players = []
+        self.players.append(player)
+    
+    def totalValue(self):
+        """Calculates a team's total score"""
+        total = 0
+        for player in self.players:
+            total += player.currentTotal()
+        return total
+    
+    def report(self):
+        if self.players:
+            players = ', '.join('%s' % player.name for player in self.players)
+            print "We are %s; we have %s on our team; and our total social value is %s."%(self.name, players, self.totalValue())
+        else:
+            print "%s is empty." % (self.name)
+    
+    def addPlayer(self, player):
+        self.players.append(player)
+    
+    def removePlayer(self, player):
+        self.players.remove(player)
+        
+
 #------------------------------------------------
 #-------------
 # Procedures
@@ -294,9 +351,27 @@ class CollaborationModel(Simulation):
     def run(self):
         self.initialize()
         self.build()
+        self.createTeams()
+
+        self.players[1].joinTeam(self.teams[0])
+        self.players[2].joinTeam(self.teams[0])
+        self.players[3].joinTeam(self.teams[0])
+        self.players[4].joinTeam(self.teams[0])
+        self.players[5].joinTeam(self.teams[0])
+        
+        for team in self.teams:
+            team.report()
+            
         for player in self.players.values():
             self.activate(player, player.report())
         self.simulate(until=400.0)
+    
+    def createTeams(self):
+        self.teams = []
+        for i, player in enumerate(self.players.values()):
+            startingTeam = Team(player, "Team %02d"%i)
+            self.teams.append(startingTeam)
+            self.players[i].setInitialTeam(startingTeam)
     
     def build(self):
         # Initialize empty players dictionary (only a dictionary so it can be indexed)
@@ -333,7 +408,6 @@ class CollaborationModel(Simulation):
         self.players = players
 
 CollaborationModel().run()
-
 
 # # Create a community of players
 # community = Community(players=players)
