@@ -349,9 +349,6 @@ resource_pool = ResourcePool(num_resources, num_players)
 objective_pool = ObjectivePool(resource_pool)
 objs_table = objective_pool.table
 
-#---------------------------------
-# Allocate pool items to players
-#---------------------------------
 
 class CollaborationModel():
     def __init__(self):
@@ -362,10 +359,15 @@ class CollaborationModel():
         team_indexes = range(num_players)
         
         # TODO: Stop this loop at Pareto efficiency
-        for _ in xrange(3):  # Temporary loop... this will eventually go until there are no more changes in team structure
+        # TODO: Remove empty teams for faster, more efficient looping
+        # TODO: Stop this loop when there are no merges for x rounds - approximates Pareto
+        while True:
+            merges = 0  # Track how many team merges happen
             print "----------------------------------------------------"
             print "Start again"
             print "----------------------------------------------------"
+            
+            # MAYBE: Loop through actual teams, not indexes
             random.shuffle(team_indexes)
             
             for pair in pairs(team_indexes):
@@ -382,6 +384,7 @@ class CollaborationModel():
                             # TODO: Drop objectives
                             if team1_player.resource == team2_player.resource:  
                                 print "Merge!"
+                                merges += 1
                                 if self.teams[x].playerCount() > self.teams[y].playerCount():
                                     team2_player.joinTeam(self.teams[x])
                                 else:
@@ -392,7 +395,14 @@ class CollaborationModel():
                     print self.teams[team].name
                     for player in self.teams[team].players:
                         print "\t", player.name, player.resource, player.objectives
+                    self.teams[team].report()
                 print "\n"
+            
+            # Leave the loop if nothing happened
+            if merges == 0:
+                break
+                
+                
 
     
     def createTeams(self):
