@@ -355,14 +355,13 @@ objs_table = objective_pool.table
 # Allocate pool items to players
 #---------------------------------
 
-class CollaborationModel(Simulation):
+# TODO: Remove SimPy stuff
+# class CollaborationModel(Simulation):
+class CollaborationModel():
     def __init__(self):
-        Simulation.__init__(self)
-
-    def run(self):
-        self.initialize()
         self.build()
         self.createTeams()
+    #     Simulation.__init__(self)
 
     def run(self):
         # self.initialize()
@@ -403,9 +402,9 @@ class CollaborationModel(Simulation):
                         print "\t", player.name, player.resource, player.objectives
                 print "\n"
             
-        for player in self.players.values():
-            self.activate(player, player.report())
-        self.simulate(until=400.0)
+        # for player in self.players.values():
+        #     self.activate(player, player.report())
+        # self.simulate(until=400.0)
     
     def createTeams(self):
         self.teams = []
