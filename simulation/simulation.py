@@ -12,7 +12,6 @@ import collections
 import itertools
 import string
 import random
-from SimPy.Simulation import *
 
 #------------------------
 # Set up the simulation
@@ -40,7 +39,7 @@ shuffle = True
 # Objects and methods
 #----------------------
 
-class Player(Process):
+class Player():
     """A player is the primary element of the simulation and is responsible for maximizing its personal or societal value by trading objectives with other players
     
     Attributes:
@@ -65,7 +64,6 @@ class Player(Process):
         Raises:
             No errors yet... I should probably build some sort of error handling eventually...
         """
-        Process.__init__(self, name, sim=sim)
         self.name = name
         self.resource = resource
         
@@ -355,18 +353,12 @@ objs_table = objective_pool.table
 # Allocate pool items to players
 #---------------------------------
 
-# TODO: Remove SimPy stuff
-# class CollaborationModel(Simulation):
 class CollaborationModel():
     def __init__(self):
         self.build()
         self.createTeams()
-    #     Simulation.__init__(self)
 
     def run(self):
-        # self.initialize()
-
-        
         team_indexes = range(num_players)
         
         # TODO: Stop this loop at Pareto efficiency
@@ -401,10 +393,7 @@ class CollaborationModel():
                     for player in self.teams[team].players:
                         print "\t", player.name, player.resource, player.objectives
                 print "\n"
-            
-        # for player in self.players.values():
-        #     self.activate(player, player.report())
-        # self.simulate(until=400.0)
+
     
     def createTeams(self):
         self.teams = []
