@@ -27,7 +27,7 @@ approximate_high_low_resource_ratio = 3
 approximate_high_low_objective_ratio = 3
 
 # Turn on random allocation
-shuffle = False
+shuffle = True
 
 
 #---------------------------------------------------
@@ -309,6 +309,10 @@ class Team:
         self.players = []
         self.players.append(player)
     
+    def playerCount(self):
+        """Count how many players there are."""
+        return len(self.players)
+    
     def totalValue(self):
         """Calculates a team's total score"""
         total = 0
@@ -328,7 +332,14 @@ class Team:
     
     def removePlayer(self, player):
         self.players.remove(player)
-        
+
+def pairs(lst):
+    i = iter(lst)
+    first = prev = i.next()
+    for item in i:
+        yield prev, item
+        prev = item
+    yield item, first        
 
 #------------------------------------------------
 #-------------
@@ -353,14 +364,44 @@ class CollaborationModel(Simulation):
         self.build()
         self.createTeams()
 
-        self.players[1].joinTeam(self.teams[0])
-        self.players[2].joinTeam(self.teams[0])
-        self.players[3].joinTeam(self.teams[0])
-        self.players[4].joinTeam(self.teams[0])
-        self.players[5].joinTeam(self.teams[0])
+    def run(self):
+        # self.initialize()
+
         
-        for team in self.teams:
-            team.report()
+        team_indexes = range(num_players)
+        
+        # TODO: Stop this loop at Pareto efficiency
+        for _ in xrange(3):  # Temporary loop... this will eventually go until there are no more changes in team structure
+            print "----------------------------------------------------"
+            print "Start again"
+            print "----------------------------------------------------"
+            random.shuffle(team_indexes)
+            
+            for pair in pairs(team_indexes):
+                x = pair[0]
+                y = pair[1]
+
+                print self.teams[x].name, "and", self.teams[y].name, "meet"
+            
+                if len(self.teams[x].players) > 0 and len(self.teams[y].players) > 0:   # If both of the teams actualy have players...
+                    for team1_player in self.teams[x].players:  # TODO: Build an actual algorithm
+                        for team2_player in self.teams[y].players:  # Loop within a loop to compare every player in both teamas
+                            # Simple temporary algorithm; this will be more complicated in the future with actual logic
+                            # Right now, players go to the largest team. In the future they'll go wherever they gain the most value
+                            # TODO: Drop objectives
+                            if team1_player.resource == team2_player.resource:  
+                                print "Merge!"
+                                if self.teams[x].playerCount() > self.teams[y].playerCount():
+                                    team2_player.joinTeam(self.teams[x])
+                                else:
+                                    team1_player.joinTeam(self.teams[y])
+
+                # Temporary reporting stuff
+                for team in pair:
+                    print self.teams[team].name
+                    for player in self.teams[team].players:
+                        print "\t", player.name, player.resource, player.objectives
+                print "\n"
             
         for player in self.players.values():
             self.activate(player, player.report())
