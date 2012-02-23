@@ -8,10 +8,11 @@
 # Brigham Young University
 #
 
-import collections
-import itertools
-import string
-import random
+# Load libraries and functions
+from collections import Counter, namedtuple
+from itertools import islice, product
+from string import ascii_uppercase
+from random import shuffle, sample
 
 #------------------------
 # Set up the simulation
@@ -24,9 +25,11 @@ value_high = 20
 value_low = 10
 approximate_high_low_resource_ratio = 3
 approximate_high_low_objective_ratio = 3
+faux_pareto_rounds_without_merges = 10
+variation = 0
 
 # Turn on random allocation
-shuffle = True
+shuffling = True
 
 
 #---------------------------------------------------
@@ -73,21 +76,32 @@ class Player():
         for i in objectives:
             self.objectives[i] = [objs_table[i]['name'], objs_table[i]['value']]
     
-    def currentTotal(self):
+    def currentTotal(self, team=None):
         """Sum the values of all objectives that match a player's assigned resource"""
+        # If no team is specified, use the actual team
+        resources = []
+        if team is None:
+            team = self.team
+            resources = team.resources()
+        # Otherwise, create a hypothetical pool of team resources
+        else:
+            resources = uniquify(team.resources() + list(self.resource))
+        
         total = 0
         for index, details in self.objectives.items():
-            if self.resource == details[0][0].upper():
-                total += details[1]
+            for resource in resources:
+                if resource == details[0][0].upper():
+                    total += details[1]
         return total
     
     def dropObjective(self):
         """docstring for dropObjective"""
+        # TODO: Drop objectives
         pass
     
     def joinTeam(self, team):
         """Add a player to a team... eventually only after checking to see if the alliance is beneficial and after dropping an objective"""
-        # Drop an objective
+        # Drop an objective someday
         self.team.removePlayer(self)    # Leave current team
         team.addPlayer(self)            # Join new team
         self.team = team                # Reassign new team to player attributes
@@ -95,10 +109,11 @@ class Player():
     def setInitialTeam(self, team):
         self.team = team
     
-    def report(self):        
+    def report(self):
+        # Build a comma separated list of objectives
         objectives = ', '.join('%s' % obj[0] for obj in self.objectives.values())
+        
         print "I am %s; I have resource %s; I have objectives %s; I'm on team %s; and my total value is %s."%(self.name, self.resource, objectives, self.team.name, self.currentTotal()) 
-        yield hold, self
         
 
 class Community:
@@ -140,7 +155,7 @@ class ResourcePool:
         self.high = divided.high
         self.low = divided.low
         r = self.create_distribution_ratios(divided.low, divided.high)
-        self.pool = dict(sorted(collections.Counter(itertools.islice(r, players)).items()))
+        self.pool = dict(sorted(Counter(islice(r, players)).items()))
 
     def create_distribution_ratios(self, prop_low, prop_high):
         """Add a fraction priority to the given high frequency resources
@@ -165,12 +180,12 @@ class ResourcePool:
         Returns:
             A named tuple of high and low frequency resources (e.g. (high='AB', low='CD'))
         """
-        DivdedResources = collections.namedtuple('Resources', ['high', 'low'])
-        letters = string.ascii_uppercase[:resources]
+        DivdedResources = namedtuple('Resources', ['high', 'low'])
+        letters = ascii_uppercase[:resources]
         high_count = resources // 2
 
-        if shuffle == True:
-            letters = ''.join(random.sample(letters, len(letters)))
+        if shuffling == True:
+            letters = ''.join(sample(letters, len(letters)))
 
         prop_high, prop_low = letters[:high_count], letters[high_count:]
         return DivdedResources(prop_high, prop_low)
@@ -228,7 +243,7 @@ class ObjectivePool:
 
         # Distribute the objectives to the newly created objectives
         o = self.create_distribution_ratios(objectives_low, objectives_high)
-        self.pool = dict(sorted(collections.Counter(itertools.islice(o, self.num_objs)).items()))
+        self.pool = dict(sorted(Counter(islice(o, self.num_objs)).items()))
 
         # Create a list of named dictionary pairs for each objective in the pool
         objs_table = []
@@ -311,17 +326,30 @@ class Team:
         """Count how many players there are."""
         return len(self.players)
     
-    def totalValue(self):
-        """Calculates a team's total score"""
-        total = 0
+    def resources(self):
+        """Find all the resources in the team and return a list of unique resource values"""
+        resources = []
         for player in self.players:
+            resources.append(player.resource)
+        return uniquify(resources)
+    
+    def totalValue(self, newPlayer=None):
+        """Calculates a team's total score"""
+        players = self.players
+        if newPlayer is None:   # If no new hypothetical player is specified, use the regular team players
+            pass
+        else:   # Otherwise, temporarily add the extra player to the team
+            players.append(newPlayer)
+        
+        total = 0
+        for player in players:
             total += player.currentTotal()
         return total
     
     def report(self):
         if self.players:
             players = ', '.join('%s' % player.name for player in self.players)
-            print "We are %s; we have %s on our team; and our total social value is %s."%(self.name, players, self.totalValue())
+            print "We are %s; we have %s on our team; we have resources %s; and our total social value is %s."%(self.name, players, self.resources(), self.totalValue())
         else:
             print "%s is empty." % (self.name)
     
@@ -337,7 +365,14 @@ def pairs(lst):
     for item in i:
         yield prev, item
         prev = item
-    yield item, first        
+    yield item, first
+
+def uniquify(seq):
+    """Take a list and return only the unique values in that list. Does not preserve list order."""
+    seen = set()
+    seen_add = seen.add
+    return [ x for x in seq if x not in seen and not seen_add(x)]
+
 
 #------------------------------------------------
 #-------------
@@ -355,55 +390,82 @@ class CollaborationModel():
         self.build()
         self.createTeams()
 
+    def run1(self):        
+        self.players[1].joinTeam(self.teams[0])
+        
+        print "Team 0"
+        self.players[0].report()
+        self.players[1].report()
+
+        print "\nTeam 2"
+        self.players[2].report()
+        
+        print "\nPlayer 0 on team 0:", self.players[0].currentTotal()
+        print "Player 0 on team 2:", self.players[0].currentTotal(self.teams[2])
+        print "Player 2 as is:", self.players[2].currentTotal()
+        print "Player 2 with player 0:", self.players[2].team.totalValue(self.players[0])
+
+        print "\nSocial value of team 0:", self.teams[0].totalValue()
+        print "Social value of team 2 with player 0:", self.teams[2].totalValue(self.players[0])
+
     def run(self):
         team_indexes = range(num_players)
+        rounds_without_merges = 0
         
-        # TODO: Stop this loop at Pareto efficiency
-        # TODO: Remove empty teams for faster, more efficient looping
-        # TODO: Stop this loop when there are no merges for x rounds - approximates Pareto
         while True:
             merges = 0  # Track how many team merges happen
-            print "----------------------------------------------------"
-            print "Start again"
-            print "----------------------------------------------------"
-            
-            # MAYBE: Loop through actual teams, not indexes
-            random.shuffle(team_indexes)
+            empty_teams = []  # Initialize the empty_teams list for tracking teams to remove from team_indexes
+            shuffle(team_indexes)            
             
             for pair in pairs(team_indexes):
                 x = pair[0]
                 y = pair[1]
 
-                print self.teams[x].name, "and", self.teams[y].name, "meet"
-            
-                if len(self.teams[x].players) > 0 and len(self.teams[y].players) > 0:   # If both of the teams actualy have players...
-                    for team1_player in self.teams[x].players:  # TODO: Build an actual algorithm
-                        for team2_player in self.teams[y].players:  # Loop within a loop to compare every player in both teamas
-                            # Simple temporary algorithm; this will be more complicated in the future with actual logic
-                            # Right now, players go to the largest team. In the future they'll go wherever they gain the most value
-                            # TODO: Drop objectives
-                            if team1_player.resource == team2_player.resource:  
-                                print "Merge!"
-                                merges += 1
-                                if self.teams[x].playerCount() > self.teams[y].playerCount():
-                                    team2_player.joinTeam(self.teams[x])
-                                else:
-                                    team1_player.joinTeam(self.teams[y])
-
+                # print self.teams[x].name, "and", self.teams[y].name, "meet"
+                
+                # If both of the teams actualy have players...
+                if self.teams[x].playerCount() > 0 and self.teams[y].playerCount() > 0:
+                    # Compare every player in both teams using itertools.product()'s nested for loop
+                    for (team1_player, team2_player) in product(self.teams[x].players, self.teams[y].players):
+                        if self.largest_matching_team(self.teams[x], self.teams[y], team1_player, team2_player) == True:
+                             merges += 1
+                
+                # Check the two teams to see if they're empty
+                # If so, save their index to the empty_teams list
+                if (self.teams[x].playerCount() == 0) : empty_teams.append(x)
+                if (self.teams[y].playerCount() == 0) : empty_teams.append(y)
+                                
                 # Temporary reporting stuff
-                for team in pair:
-                    print self.teams[team].name
-                    for player in self.teams[team].players:
-                        print "\t", player.name, player.resource, player.objectives
-                    self.teams[team].report()
-                print "\n"
+                # for team in pair:
+                #     print self.teams[team].name
+                #     for player in self.teams[team].players:
+                #         print "\t", player.name, player.resource, player.objectives
+                #     self.teams[team].report()
+                # print "\n"
             
-            # Leave the loop if nothing happened
-            if merges == 0:
-                break
-                
-                
-
+            # Remove the empty teams from the team_indexes list using list comprehension
+            team_indexes = [x for x in team_indexes if x not in uniquify(empty_teams)]
+            
+            # If no merges happened this round, mark it
+            if merges == 0 : rounds_without_merges += 1
+            
+            # If x rounds without merges happen, stop looping
+            if rounds_without_merges == faux_pareto_rounds_without_merges : break
+        
+        print "Final teams:"
+        for team in self.teams:
+            team.report()             
+            
+    
+    def largest_matching_team(self, team1, team2, team1_player, team2_player):
+        """Simple temporary algorithm for development. Players join the team with the largest number of matching resources. As a result, players congregrate to teams/networks of their own resorce."""
+        if team1_player.resource == team2_player.resource:  
+            if team1.playerCount() > team2.playerCount():
+                team2_player.joinTeam(team1)
+            else:
+                team1_player.joinTeam(team2)
+            return True
+    
     
     def createTeams(self):
         self.teams = []
@@ -421,9 +483,9 @@ class CollaborationModel():
         objs_index = range(objective_pool.num_objs)
 
         # Shuffle the lists if shuffling is enabled
-        if shuffle == True:
-            random.shuffle(players_list)
-            random.shuffle(objs_index)
+        if shuffling == True:
+            shuffle(players_list)
+            shuffle(objs_index)
 
         # `count` keeps track of the number of times a resource is allocated to a player. It will only ever go up to `num_players`
         count = 0
