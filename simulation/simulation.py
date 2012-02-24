@@ -76,18 +76,30 @@ class Player():
         self.objectives = {}
         for i in objectives:
             self.objectives[i] = [objs_table[i]['name'], objs_table[i]['value']]
-    
-    def currentTotal(self, team=None):
-        """Sum the values of all objectives that match a player's assigned resource"""
-        # If no team is specified, use the actual team
+
+    def currentTotal(self, test_object=None, object_is_team=True):
+        """Sum the values of all objectives that match a player's assigned resource
+        
+        Args:
+            test_object: Either a team or a player object that will be used hypothetically
+            object_is_team: Boolean that defaults to true. By default, this will test a hypothetical team. If false, it will test a hypothetical player.
+        """
+        # If no object is specified, use the actual team
         resources = []
-        if team is None:
+        if test_object is None:
             team = self.team
             resources = team.resources()
-        # Otherwise, create a hypothetical pool of team resources
         else:
-            resources = uniquify(team.resources() + list(self.resource))
+            # Otherwise, create a hypothetical pool of team resources using by either 
+            # (1) Combining the hypothetical team's resources and the actual player's single resource
+            # or
+            # (2) Combining the hypothetical player's single resource and the actual player's team resources
+            if object_is_team == True:
+                resources = uniquify(test_object.resources() + list(self.resource))
+            else:
+                resources = uniquify(self.team.resources() + list(test_object.resource))
         
+        # Calculate the player's total personal score based on the pool of resources available
         total = 0
         for index, details in self.objectives.items():
             for resource in resources:
