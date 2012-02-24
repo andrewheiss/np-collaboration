@@ -13,6 +13,7 @@ from collections import Counter, namedtuple
 from itertools import islice, product
 from string import ascii_uppercase
 from random import shuffle, sample
+from copy import deepcopy
 
 #------------------------
 # Set up the simulation
@@ -339,6 +340,9 @@ class Team:
         if newPlayer is None:   # If no new hypothetical player is specified, use the regular team players
             pass
         else:   # Otherwise, temporarily add the extra player to the team
+            players = self.players
+        else:   # Otherwise, temporarily add the extra player to a copy of the team
+            players = deepcopy(self.players)
             players.append(newPlayer)
         
         total = 0
