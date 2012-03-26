@@ -12,7 +12,7 @@
 from collections import Counter, namedtuple
 from itertools import islice, product
 from string import ascii_uppercase
-from random import shuffle, sample
+from random import shuffle, sample, seed
 from copy import deepcopy
 
 #------------------------
@@ -28,6 +28,7 @@ approximate_high_low_resource_ratio = 3
 approximate_high_low_objective_ratio = 3
 faux_pareto_rounds_without_merges = 10
 variation = 0
+# seed(4567890)
 
 # Turn on random allocation
 shuffling = True
@@ -348,10 +349,7 @@ class Team:
     
     def totalValue(self, newPlayer=None):
         """Calculates a team's total score"""
-        players = self.players
         if newPlayer is None:   # If no new hypothetical player is specified, use the regular team players
-            pass
-        else:   # Otherwise, temporarily add the extra player to the team
             players = self.players
         else:   # Otherwise, temporarily add the extra player to a copy of the team
             players = deepcopy(self.players)
@@ -406,7 +404,7 @@ class CollaborationModel():
         self.build()
         self.createTeams()
 
-    def run1(self):        
+    def run1(self):
         self.players[1].joinTeam(self.teams[0])
         
         print "Team 0"
@@ -416,17 +414,107 @@ class CollaborationModel():
         print "\nTeam 2"
         self.players[2].report()
         
-        print "\nPlayer 0 on team 0:", self.players[0].currentTotal()
-        print "Player 0 on team 2:", self.players[0].currentTotal(self.teams[2])
-        print "Player 2 as is:", self.players[2].currentTotal()
-        print "Player 2 with player 0:", self.players[2].team.totalValue(self.players[0])
-
-        print "\nSocial value of team 0:", self.teams[0].totalValue()
-        print "Social value of team 2 with player 0:", self.teams[2].totalValue(self.players[0])
+        # print "\nPlayer 0 on team 0:", self.players[0].currentTotal()
+        # print "Player 0 on team 2:", self.players[0].currentTotal(self.teams[2])
+        # print "Player 2 as is:", self.players[2].currentTotal1()
+        # print "Player 2 with player 0:", self.players[2].team.totalValue(self.players[0])
+        # print "Player 2 on team 0:", self.players[2].currentTotal(self.teams[0])
+        # print "Player 2 as is:", self.players[2].currentTotal()
+        
+        print "---------------------------"
+        
+        team1_player = self.players[0]
+        team2_player = self.players[2]
+        
+        ab_delta_1 = team1_player.currentTotal(team2_player.team) - team1_player.currentTotal()
+        ba_delta_1 = team1_player.currentTotal(team2_player, object_is_team=False) - team1_player.currentTotal()
+        
+        ba_delta_2 = team2_player.currentTotal(team1_player.team) - team2_player.currentTotal()
+        ab_delta_2 = ab_delta_2 = team2_player.currentTotal(team1_player, object_is_team=False) - team2_player.currentTotal()
+        
+        
+        print "\nI'm {0} and I might want to join {1}'s team".format(team1_player.name, team2_player.name)
+        print "On my current team, I have {0} points and access to {1}".format(team1_player.currentTotal(), team1_player.team.resources())
+        print "If I left to join {0} with {1}, I'd have {2} points because I'd have access to {3}".format(team2_player.team.name, team2_player.name, team1_player.currentTotal(team2_player.team), team2_player.team.resources())
+        
+        print "That would be a change of {0} points".format(ab_delta_1)
+        print "But if {0} came to join my team I would have {1} points".format(team2_player.name, team1_player.currentTotal(team2_player, object_is_team=False))
+        print "And that would be a change of {0} points".format(ba_delta_1)
+        
+        print "\nI'm {0} and I might want to join {1}'s team".format(team2_player.name, team1_player.name)
+        print "On my current team, I have {0} points and access to {1}".format(team2_player.currentTotal(), team2_player.team.resources())
+        print "If I left to join {0} with {1}, I'd have {2} points because I'd have access to {3}".format(team1_player.team.name, team1_player.name, team2_player.currentTotal(team1_player.team), team1_player.team.resources())
+        print "That would be a change of {0} points".format(ba_delta_2)
+        print "But if {0} came to join my team I would have {1} points".format(team1_player.name, team2_player.currentTotal(team1_player, object_is_team=False))
+        print "And that would be a change of {0} points".format(ab_delta_2)
+        
+        
+        print ""
+        
+        # ba_delta_2 = 20
+        # ab_delta_2 = 40
+        # ab_delta_1 = 50
+        # ba_delta_1 = 30
+        
+        print ab_delta_1, ba_delta_1
+        print ba_delta_2, ab_delta_2
+        
+        #---------------------------------------------------------
+        # Magic algorithm to determine how to create an alliance
+        #---------------------------------------------------------
+                
+        # If both of the changes are negative, don't do anything.
+        if ab_delta_1 <= 0 and ba_delta_1 <= 0:
+            print "No net positive. Don't move or try to have them join."
+        
+        # If it's better to have player 1 move, attempt to move.
+        elif ab_delta_1 >= 0 and ab_delta_1 > ba_delta_1:
+            print "{0} will gain {1} points if they move to the other team. Try to move.".format(team1_player.name, ab_delta_1)
+            
+            # Check for player 2's permission
+            # If player 2 gains more by having player 1 join their team, do it.
+            if ab_delta_2 >= 0 and ab_delta_2 > ba_delta_2: 
+                print "AA This is the ideal situation; {0} will gain {1} points. Permission granted.".format(team2_player.name, ab_delta_2)
+            # If player 2 doesn't gain as much by having player 1 join, TODO: figure out what to do here
+            elif ba_delta_2 >= 0 and ba_delta_2 > ab_delta_2:
+                print "AA It's better if {0} does something else, maybe.".format(team2_player.name)
+            # Otherwise, don't do anything.
+            else:
+                print "AA Permission denied."
+        
+        # If it's better to have player 2 join, invite them to join.
+        elif ba_delta_1 >= 0 and ba_delta_1 > ab_delta_1:
+            print "{0} will gain {1} points if {2} joins their team. Try to get them to come over.".format(team1_player.name, ba_delta_1, team2_player.name)
+            
+            # Check for player 2's permission
+            # If player 2 gains more by leaving their current team and joining player 1, do it
+            if ba_delta_2 >= 0 and ba_delta_2 > ab_delta_2:
+                print "This is the ideal situation; {0} will gain {1} points. Permission granted.".format(team2_player.name, ba_delta_2)
+            # If player 2 doesn't gain as much by leaving, TODO: figure out what to do here
+            elif ab_delta_2 >= 0 and ab_delta_2 > ba_delta_2:
+                print "It's better if {0} does something else, maybe.".format(team2_player.name)
+            # Otherwise, don't do anything.
+            else:
+                print "Permission denied."
+        
+        # If player 1 will gain equal value from either leaving or inviting, do... something...
+        elif ab_delta_1 == ba_delta_1 and ab_delta_1 > 0:
+            print "Either option would be fine. TODO: Figure out what to do here."
+            
+        # TODO: If the permission giving fails, try trading the other way if it's advantageous
+        
+        # print "\nSocial value of team 0:", self.teams[0].totalValue()
+        # print "Social value of team 2 with player 0:", self.teams[2].totalValue(self.players[0])
+        # print "Social value of team 2:", self.teams[2].totalValue()
 
     def run(self):
         team_indexes = range(num_players)
         rounds_without_merges = 0
+        
+        for i in self.players:
+            self.players[i].report()
+        
+        print ""
         
         while True:
             merges = 0  # Track how many team merges happen
@@ -443,8 +531,10 @@ class CollaborationModel():
                 if self.teams[x].playerCount() > 0 and self.teams[y].playerCount() > 0:
                     # Compare every player in both teams using itertools.product()'s nested for loop
                     for (team1_player, team2_player) in product(self.teams[x].players, self.teams[y].players):
+                        # This is where the different algorithms go, probably with a select case type thing (although that doesn't really exist in Python)
                         if self.largest_matching_team(self.teams[x], self.teams[y], team1_player, team2_player) == True:
                              merges += 1
+                        
                 
                 # Check the two teams to see if they're empty
                 # If so, save their index to the empty_teams list
@@ -481,7 +571,6 @@ class CollaborationModel():
             else:
                 team1_player.joinTeam(team2)
             return True
-    
     
     def createTeams(self):
         self.teams = []
@@ -524,7 +613,9 @@ class CollaborationModel():
         
         self.players = players
 
-CollaborationModel().run()
+# for _ in xrange(5):
+# for _ in itertools.repeat(None, N):
+CollaborationModel().run1()
 
 # # Create a community of players
 # community = Community(players=players)
