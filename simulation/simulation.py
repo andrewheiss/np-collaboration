@@ -146,7 +146,7 @@ class Community:
 class ResourcePool:
     """Creates a pool of resources with high and low distributions according to the frequency in `approximate_high_low_resource_ratio`
     
-    For example, if there are 16 players, with 4 different types of objectives, and an approximate ratio of 3:1, the pool will be a dictionary distributed like so:
+    For example, if there are 16 players, with 4 different types of resources, and an approximate ratio of 3:1, the pool will be a dictionary distributed like so:
     {'A': 6, 'B': 6, 'C': 2, 'D': 2}
     with A and B as high frequency resources and C and D as low frequency
     
@@ -426,22 +426,24 @@ class CollaborationModel():
         team1_player = self.players[0]
         team2_player = self.players[2]
         
+        # TODO: Document these variables (appended _1 and _2 indicate which perspective is used for the exchange)
         ab_delta_1 = team1_player.currentTotal(team2_player.team) - team1_player.currentTotal()
         ba_delta_1 = team1_player.currentTotal(team2_player, object_is_team=False) - team1_player.currentTotal()
         
         ba_delta_2 = team2_player.currentTotal(team1_player.team) - team2_player.currentTotal()
         ab_delta_2 = ab_delta_2 = team2_player.currentTotal(team1_player, object_is_team=False) - team2_player.currentTotal()
         
-        
-        print "\nI'm {0} and I might want to join {1}'s team".format(team1_player.name, team2_player.name)
-        print "On my current team, I have {0} points and access to {1}".format(team1_player.currentTotal(), team1_player.team.resources())
+        # Player A's soliloquy
+        print "\nI'm {0} and I get to collaborate with {1}.".format(team1_player.name, team2_player.name)
+        print "On my current team, I have {0} points and access to {1}".format(team1_player.currentTotal(), team1_player¡.team.resources())
         print "If I left to join {0} with {1}, I'd have {2} points because I'd have access to {3}".format(team2_player.team.name, team2_player.name, team1_player.currentTotal(team2_player.team), team2_player.team.resources())
-        
+    
         print "That would be a change of {0} points".format(ab_delta_1)
         print "But if {0} came to join my team I would have {1} points".format(team2_player.name, team1_player.currentTotal(team2_player, object_is_team=False))
         print "And that would be a change of {0} points".format(ba_delta_1)
         
-        print "\nI'm {0} and I might want to join {1}'s team".format(team2_player.name, team1_player.name)
+        # Player B's soliloquy
+        print "\nI'm {0} and {1} wants to collaborate with me".format(team2_player.name, team1_player.name)
         print "On my current team, I have {0} points and access to {1}".format(team2_player.currentTotal(), team2_player.team.resources())
         print "If I left to join {0} with {1}, I'd have {2} points because I'd have access to {3}".format(team1_player.team.name, team1_player.name, team2_player.currentTotal(team1_player.team), team1_player.team.resources())
         print "That would be a change of {0} points".format(ba_delta_2)
@@ -497,7 +499,7 @@ class CollaborationModel():
             else:
                 print "Permission denied."
         
-        # If player 1 will gain equal value from either leaving or inviting, do... something...
+        # If player 1 will gain equal value from either leaving or inviting, choose one randomly
         elif ab_delta_1 == ba_delta_1 and ab_delta_1 > 0:
             print "Either option would be fine. TODO: Figure out what to do here."
             
@@ -586,6 +588,8 @@ class CollaborationModel():
         # Build the players list and index of objectives
         players_list = range(num_players)
         objs_index = range(objective_pool.num_objs)
+        print(resource_pool.pool)
+        print(objective_pool.pool)
 
         # Shuffle the lists if shuffling is enabled
         if shuffling == True:
