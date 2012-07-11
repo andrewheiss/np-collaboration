@@ -404,110 +404,118 @@ class CollaborationModel():
         self.build()
         self.createTeams()
 
-    def run1(self):
+    def variation_3(self):
         self.players[1].joinTeam(self.teams[0])
-        
-        print "Team 0"
-        self.players[0].report()
-        self.players[1].report()
+        # print "Team 0"
+        # self.players[0].report()
+        # self.players[1].report()
 
-        print "\nTeam 2"
-        self.players[2].report()
+        # print "\nTeam 2"
+        # self.players[2].report()
         
-        # print "\nPlayer 0 on team 0:", self.players[0].currentTotal()
-        # print "Player 0 on team 2:", self.players[0].currentTotal(self.teams[2])
-        # print "Player 2 as is:", self.players[2].currentTotal1()
-        # print "Player 2 with player 0:", self.players[2].team.totalValue(self.players[0])
-        # print "Player 2 on team 0:", self.players[2].currentTotal(self.teams[0])
-        # print "Player 2 as is:", self.players[2].currentTotal()
+        # print "\n---------------------------"
         
-        print "---------------------------"
+        player_a = self.players[0]
+        player_b = self.players[2]
+
+        # a_delta_if_move = 20
+        # a_delta_if_stay = 20
+        # b_delta_if_move = 0
+        # b_delta_if_stay = 0
+
+        a_delta_if_move = player_a.currentTotal(player_b.team) - player_a.currentTotal()  # A's hypothetical total on B's team - A's current total
+        a_delta_if_stay = player_a.currentTotal(player_b, object_is_team=False) - player_a.currentTotal()  # A's hypothetical total if B joins A - A's current total
         
-        team1_player = self.players[0]
-        team2_player = self.players[2]
-        
-        # TODO: Document these variables (appended _1 and _2 indicate which perspective is used for the exchange)
-        ab_delta_1 = team1_player.currentTotal(team2_player.team) - team1_player.currentTotal()
-        ba_delta_1 = team1_player.currentTotal(team2_player, object_is_team=False) - team1_player.currentTotal()
-        
-        ba_delta_2 = team2_player.currentTotal(team1_player.team) - team2_player.currentTotal()
-        ab_delta_2 = ab_delta_2 = team2_player.currentTotal(team1_player, object_is_team=False) - team2_player.currentTotal()
-        
-        # Player A's soliloquy
-        print "\nI'm {0} and I get to collaborate with {1}.".format(team1_player.name, team2_player.name)
-        print "On my current team, I have {0} points and access to {1}".format(team1_player.currentTotal(), team1_player¡.team.resources())
-        print "If I left to join {0} with {1}, I'd have {2} points because I'd have access to {3}".format(team2_player.team.name, team2_player.name, team1_player.currentTotal(team2_player.team), team2_player.team.resources())
+        b_delta_if_move = player_b.currentTotal(player_a.team) - player_b.currentTotal()  # B's hypothetical total on A's - B's current total
+        b_delta_if_stay = player_b.currentTotal(player_a, object_is_team=False) - player_b.currentTotal()  # B's hypothetical total if A joined B - B's current total
+
+        # # Player A's soliloquy
+        # print "\nI'm {0} and I get to collaborate with {1}.".format(player_a.name, player_b.name)
+        # print "On my current team, I have {0} points and access to {1}".format(player_a.currentTotal(), player_a.team.resources())
+        # print "If I left to join {0} with {1}, I'd have {2} points because I'd have access to {3}".format(player_b.team.name, player_b.name, player_a.currentTotal(player_b.team), player_b.team.resources())
     
-        print "That would be a change of {0} points".format(ab_delta_1)
-        print "But if {0} came to join my team I would have {1} points".format(team2_player.name, team1_player.currentTotal(team2_player, object_is_team=False))
-        print "And that would be a change of {0} points".format(ba_delta_1)
+        # print "That would be a change of {0} points".format(a_delta_if_move)
+        # print "But if {0} came to join my team I would have {1} points".format(player_b.name, player_a.currentTotal(player_b, object_is_team=False))
+        # print "And that would be a change of {0} points".format(a_delta_if_stay)
         
-        # Player B's soliloquy
-        print "\nI'm {0} and {1} wants to collaborate with me".format(team2_player.name, team1_player.name)
-        print "On my current team, I have {0} points and access to {1}".format(team2_player.currentTotal(), team2_player.team.resources())
-        print "If I left to join {0} with {1}, I'd have {2} points because I'd have access to {3}".format(team1_player.team.name, team1_player.name, team2_player.currentTotal(team1_player.team), team1_player.team.resources())
-        print "That would be a change of {0} points".format(ba_delta_2)
-        print "But if {0} came to join my team I would have {1} points".format(team1_player.name, team2_player.currentTotal(team1_player, object_is_team=False))
-        print "And that would be a change of {0} points".format(ab_delta_2)
-        
-        
-        print ""
-        
-        # ba_delta_2 = 20
-        # ab_delta_2 = 40
-        # ab_delta_1 = 50
-        # ba_delta_1 = 30
-        
-        print ab_delta_1, ba_delta_1
-        print ba_delta_2, ab_delta_2
-        
-        #---------------------------------------------------------
-        # Magic algorithm to determine how to create an alliance
-        #---------------------------------------------------------
-                
-        # If both of the changes are negative, don't do anything.
-        if ab_delta_1 <= 0 and ba_delta_1 <= 0:
-            print "No net positive. Don't move or try to have them join."
-        
-        # If it's better to have player 1 move, attempt to move.
-        elif ab_delta_1 >= 0 and ab_delta_1 > ba_delta_1:
-            print "{0} will gain {1} points if they move to the other team. Try to move.".format(team1_player.name, ab_delta_1)
-            
-            # Check for player 2's permission
-            # If player 2 gains more by having player 1 join their team, do it.
-            if ab_delta_2 >= 0 and ab_delta_2 > ba_delta_2: 
-                print "AA This is the ideal situation; {0} will gain {1} points. Permission granted.".format(team2_player.name, ab_delta_2)
-            # If player 2 doesn't gain as much by having player 1 join, TODO: figure out what to do here
-            elif ba_delta_2 >= 0 and ba_delta_2 > ab_delta_2:
-                print "AA It's better if {0} does something else, maybe.".format(team2_player.name)
-            # Otherwise, don't do anything.
+        # # Player B's soliloquy
+        # print "\nI'm {0} and {1} wants to collaborate with me".format(player_b.name, player_a.name)
+        # print "On my current team, I have {0} points and access to {1}".format(player_b.currentTotal(), player_b.team.resources())
+        # print "If I left to join {0} with {1}, I'd have {2} points because I'd have access to {3}".format(player_a.team.name, player_a.name, player_b.currentTotal(player_a.team), player_a.team.resources())
+        # print "That would be a change of {0} points".format(b_delta_if_move)
+        # print "But if {0} came to join my team I would have {1} points".format(player_a.name, player_b.currentTotal(player_a, object_is_team=False))
+        # print "And that would be a change of {0} points".format(b_delta_if_stay)
+
+        # print "\n---------------------------\n"
+
+        print a_delta_if_move, a_delta_if_stay
+        print b_delta_if_move, b_delta_if_stay
+
+        print "\n---------------------------\n"
+
+        #---------------------
+        # Decision algorithm
+        #---------------------
+
+        def a_ask_b_to_join():
+            print "Inviting B"
+            if b_delta_if_move >= 0 and b_delta_if_move > b_delta_if_stay:
+                print "This is the ideal situation; {0} will gain {1} points and {2} will gain {3}. Permission granted.".format(player_a.name, a_delta_if_stay, player_b.name, b_delta_if_move)
+                return True
+            elif b_delta_if_stay >= 0 and b_delta_if_stay > b_delta_if_move:
+                print "It's better if B stays..."
+                return True
+            elif b_delta_if_move == b_delta_if_stay and b_delta_if_move > 0:
+                print "It doesn't matter to B. Permission granted."
+                return True
             else:
-                print "AA Permission denied."
-        
-        # If it's better to have player 2 join, invite them to join.
-        elif ba_delta_1 >= 0 and ba_delta_1 > ab_delta_1:
-            print "{0} will gain {1} points if {2} joins their team. Try to get them to come over.".format(team1_player.name, ba_delta_1, team2_player.name)
-            
-            # Check for player 2's permission
-            # If player 2 gains more by leaving their current team and joining player 1, do it
-            if ba_delta_2 >= 0 and ba_delta_2 > ab_delta_2:
-                print "This is the ideal situation; {0} will gain {1} points. Permission granted.".format(team2_player.name, ba_delta_2)
-            # If player 2 doesn't gain as much by leaving, TODO: figure out what to do here
-            elif ab_delta_2 >= 0 and ab_delta_2 > ba_delta_2:
-                print "It's better if {0} does something else, maybe.".format(team2_player.name)
-            # Otherwise, don't do anything.
+                print "Permission denied"
+                return False
+
+        def a_try_move_to_b():
+            print "Trying to move"
+            if b_delta_if_stay > 0 and b_delta_if_stay > b_delta_if_move:
+                print "aa This is the ideal situation; {0} will gain {1} points and {2} will gain {3}. Permission granted.".format(player_a.name, a_delta_if_move, player_b.name, b_delta_if_stay)
+                return True
+            elif b_delta_if_move > 0 and b_delta_if_move > b_delta_if_stay:
+                print "aa It's better if B moves..."
+                return True
+            elif b_delta_if_stay == b_delta_if_move and b_delta_if_stay > 0:
+                print "aa It doesn't matter to B. Permission granted."
+                return True
             else:
-                print "Permission denied."
-        
-        # If player 1 will gain equal value from either leaving or inviting, choose one randomly
-        elif ab_delta_1 == ba_delta_1 and ab_delta_1 > 0:
-            print "Either option would be fine. TODO: Figure out what to do here."
-            
+                print "aa Permission denied"
+                return False
+
+        # If both changes are negative, don't do anything
+        if a_delta_if_stay <= 0 and a_delta_if_move <= 0:
+            print "All net changes are bad. Don't do anything."
+            return False
+
+        # If moving to B's team is better than staying, ask permission to move
+        elif a_delta_if_move >= 0 and a_delta_if_move > a_delta_if_stay:
+            return a_try_move_to_b()
+
+        # If staying is better than moving to B's team, invite B to join
+        elif a_delta_if_stay >= 0 and a_delta_if_stay > a_delta_if_move:
+            return a_ask_b_to_join()
+
+        # If staying and moving give the same benefit, choose one randomly
+        elif a_delta_if_stay == a_delta_if_move and a_delta_if_move > 0:
+            print "Either option is the same" 
+            actions = [a_try_move_to_b, a_ask_b_to_join]  # Create a list of the two functions
+            shuffle(actions)  # Shuffle the list
+            if actions[0]():  # Try either inviting or moving. If that fails, try the other one.
+                return True
+            else:
+                return actions[1]()
+
         # TODO: If the permission giving fails, try trading the other way if it's advantageous
-        
+
         # print "\nSocial value of team 0:", self.teams[0].totalValue()
         # print "Social value of team 2 with player 0:", self.teams[2].totalValue(self.players[0])
         # print "Social value of team 2:", self.teams[2].totalValue()
+
 
     def run(self):
         team_indexes = range(num_players)
@@ -588,8 +596,8 @@ class CollaborationModel():
         # Build the players list and index of objectives
         players_list = range(num_players)
         objs_index = range(objective_pool.num_objs)
-        print(resource_pool.pool)
-        print(objective_pool.pool)
+        # print(resource_pool.pool)
+        # print(objective_pool.pool)
 
         # Shuffle the lists if shuffling is enabled
         if shuffling == True:
@@ -619,7 +627,7 @@ class CollaborationModel():
 
 # for _ in xrange(5):
 # for _ in itertools.repeat(None, N):
-CollaborationModel().run1()
+CollaborationModel().variation_3()
 
 # # Create a community of players
 # community = Community(players=players)
