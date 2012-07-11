@@ -26,7 +26,7 @@ value_high = 20
 value_low = 10
 approximate_high_low_resource_ratio = 3
 approximate_high_low_objective_ratio = 3
-faux_pareto_rounds_without_merges = 10
+faux_pareto_rounds_without_merges = 100
 variation = 0
 # seed(4567890)
 
@@ -138,7 +138,7 @@ class Community:
     def total(self):
         """docstring for globalTotal"""
         total = 0
-        for i, player in players.items():
+        for i, player in self.players.items():
             total += player.currentTotal()
         return total
 
@@ -404,20 +404,11 @@ class CollaborationModel():
         self.build()
         self.createTeams()
 
-    def variation_3(self):
+    def run1(self):
         self.players[1].joinTeam(self.teams[0])
-        # print "Team 0"
-        # self.players[0].report()
-        # self.players[1].report()
+        self.variation_3(self.teams[0], self.teams[2], self.players[0], self.players[2])
 
-        # print "\nTeam 2"
-        # self.players[2].report()
-        
-        # print "\n---------------------------"
-        
-        player_a = self.players[0]
-        player_b = self.players[2]
-
+    def variation_3(self, team_a, team_b, player_a, player_b):
         # a_delta_if_move = 20
         # a_delta_if_stay = 20
         # b_delta_if_move = 0
@@ -448,48 +439,54 @@ class CollaborationModel():
 
         # print "\n---------------------------\n"
 
-        print a_delta_if_move, a_delta_if_stay
-        print b_delta_if_move, b_delta_if_stay
+        # print a_delta_if_move, a_delta_if_stay
+        # print b_delta_if_move, b_delta_if_stay
 
-        print "\n---------------------------\n"
+        # print "\n---------------------------\n"
 
         #---------------------
         # Decision algorithm
         #---------------------
 
         def a_ask_b_to_join():
-            print "Inviting B"
+            # print "Inviting B"
             if b_delta_if_move >= 0 and b_delta_if_move > b_delta_if_stay:
-                print "This is the ideal situation; {0} will gain {1} points and {2} will gain {3}. Permission granted.".format(player_a.name, a_delta_if_stay, player_b.name, b_delta_if_move)
+                # print "This is the ideal situation; {0} will gain {1} points and {2} will gain {3}. Permission granted.".format(player_a.name, a_delta_if_stay, player_b.name, b_delta_if_move)
+                player_b.joinTeam(team_a)
                 return True
             elif b_delta_if_stay >= 0 and b_delta_if_stay > b_delta_if_move:
-                print "It's better if B stays..."
+                # print "It's better if B stays... but why not"  # TODO: Maybe base this on a percentage
+                player_b.joinTeam(team_a)
                 return True
             elif b_delta_if_move == b_delta_if_stay and b_delta_if_move > 0:
-                print "It doesn't matter to B. Permission granted."
+                # print "It doesn't matter to B. Permission granted."
+                player_b.joinTeam(team_a)
                 return True
             else:
-                print "Permission denied"
+                # print "Permission denied"
                 return False
 
         def a_try_move_to_b():
-            print "Trying to move"
+            # print "Trying to move"
             if b_delta_if_stay > 0 and b_delta_if_stay > b_delta_if_move:
-                print "aa This is the ideal situation; {0} will gain {1} points and {2} will gain {3}. Permission granted.".format(player_a.name, a_delta_if_move, player_b.name, b_delta_if_stay)
+                # print "aa This is the ideal situation; {0} will gain {1} points and {2} will gain {3}. Permission granted.".format(player_a.name, a_delta_if_move, player_b.name, b_delta_if_stay)
+                player_a.joinTeam(team_b)
                 return True
             elif b_delta_if_move > 0 and b_delta_if_move > b_delta_if_stay:
-                print "aa It's better if B moves..."
+                # print "aa It's better if B moves... but why not"  # TODO: Maybe base this on a percentage
+                player_a.joinTeam(team_b)
                 return True
             elif b_delta_if_stay == b_delta_if_move and b_delta_if_stay > 0:
-                print "aa It doesn't matter to B. Permission granted."
+                # print "aa It doesn't matter to B. Permission granted."
+                player_a.joinTeam(team_b)
                 return True
             else:
-                print "aa Permission denied"
+                # print "aa Permission denied"
                 return False
 
         # If both changes are negative, don't do anything
         if a_delta_if_stay <= 0 and a_delta_if_move <= 0:
-            print "All net changes are bad. Don't do anything."
+            # print "All net changes are bad. Don't do anything."
             return False
 
         # If moving to B's team is better than staying, ask permission to move
@@ -502,7 +499,7 @@ class CollaborationModel():
 
         # If staying and moving give the same benefit, choose one randomly
         elif a_delta_if_stay == a_delta_if_move and a_delta_if_move > 0:
-            print "Either option is the same" 
+            # print "Either option is the same" 
             actions = [a_try_move_to_b, a_ask_b_to_join]  # Create a list of the two functions
             shuffle(actions)  # Shuffle the list
             if actions[0]():  # Try either inviting or moving. If that fails, try the other one.
@@ -520,13 +517,19 @@ class CollaborationModel():
     def run(self):
         team_indexes = range(num_players)
         rounds_without_merges = 0
+        global_merges = 0
+        merges = 0
         
         for i in self.players:
             self.players[i].report()
         
         print ""
-        
+
+        community = Community(self.players)
+        print "Total community social value before playing: " + str(community.total()) + "\n"
+
         while True:
+            global_merges += merges
             merges = 0  # Track how many team merges happen
             empty_teams = []  # Initialize the empty_teams list for tracking teams to remove from team_indexes
             shuffle(team_indexes)            
@@ -542,9 +545,9 @@ class CollaborationModel():
                     # Compare every player in both teams using itertools.product()'s nested for loop
                     for (team1_player, team2_player) in product(self.teams[x].players, self.teams[y].players):
                         # This is where the different algorithms go, probably with a select case type thing (although that doesn't really exist in Python)
-                        if self.largest_matching_team(self.teams[x], self.teams[y], team1_player, team2_player) == True:
-                             merges += 1
-                        
+                        # if self.largest_matching_team(self.teams[x], self.teams[y], team1_player, team2_player) == True:
+                        if self.variation_3(self.teams[x], self.teams[y], team1_player, team2_player) == True:
+                             merges += 1                        
                 
                 # Check the two teams to see if they're empty
                 # If so, save their index to the empty_teams list
@@ -568,9 +571,13 @@ class CollaborationModel():
             # If x rounds without merges happen, stop looping
             if rounds_without_merges == faux_pareto_rounds_without_merges : break
         
+        print "Total number of team switches: {0}\n".format(global_merges)
+
         print "Final teams:"
         for team in self.teams:
-            team.report()             
+            team.report()
+
+        print "Total community social value after playing: " + str(community.total()) + "\n"         
             
     
     def largest_matching_team(self, team1, team2, team1_player, team2_player):
@@ -627,7 +634,7 @@ class CollaborationModel():
 
 # for _ in xrange(5):
 # for _ in itertools.repeat(None, N):
-CollaborationModel().variation_3()
+CollaborationModel().run()
 
 # # Create a community of players
 # community = Community(players=players)
