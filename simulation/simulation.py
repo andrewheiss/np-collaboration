@@ -26,7 +26,7 @@ value_high = 20
 value_low = 10
 approximate_high_low_resource_ratio = 3
 approximate_high_low_objective_ratio = 3
-faux_pareto_rounds_without_merges = 100
+faux_pareto_rounds_without_merges = 500
 variation = 0
 # seed(4567890)
 
@@ -78,7 +78,7 @@ class Player():
         for i in objectives:
             self.objectives[i] = [objs_table[i]['name'], objs_table[i]['value']]
 
-    def currentTotal(self, test_object=None, object_is_team=True):
+    def currentTotal(self, test_object=None, object_is_team=True, alone=False):
         """Sum the values of all objectives that match a player's assigned resource
         
         Args:
@@ -88,17 +88,26 @@ class Player():
         # If no object is specified, use the actual team
         resources = []
         if test_object is None:
-            team = self.team
-            resources = team.resources()
+            if alone == True:
+                resources = list(self.resource)
+            else:
+                resources = self.team.resources()
         else:
             # Otherwise, create a hypothetical pool of team resources using by either 
             # (1) Combining the hypothetical team's resources and the actual player's single resource
             # or
             # (2) Combining the hypothetical player's single resource and the actual player's team resources
+
+            if alone == True:
+                resources = list(self.resource)
+
             if object_is_team == True:
-                resources = uniquify(test_object.resources() + list(self.resource))
+                    resources = uniquify(test_object.resources() + list(self.resource))
             else:
-                resources = uniquify(self.team.resources() + list(test_object.resource))
+                if alone == True:
+                    resources = list(self.resource) + list(test_object.resource)
+                else:
+                    resources = uniquify(self.team.resources() + list(test_object.resource))
         
         # Calculate the player's total personal score based on the pool of resources available
         total = 0
@@ -132,8 +141,9 @@ class Player():
 
 class Community:
     """docstring for World"""
-    def __init__(self, players):
+    def __init__(self, players, teams):
         self.players = players
+        self.teams = teams
     
     def total(self):
         """docstring for globalTotal"""
@@ -141,6 +151,12 @@ class Community:
         for i, player in self.players.items():
             total += player.currentTotal()
         return total
+
+    def activeTeams(self):
+        return [ team.index for team in self.teams if team.playerCount() > 0 ]
+
+    def last_team_index(self):
+        return self.teams[-1].index
 
 
 class ResourcePool:
@@ -320,10 +336,10 @@ class Team:
     Returns:
         A new team object
     """
-    def __init__(self, player, name):
+    def __init__(self, index):
         """Creates a new team object
         
-        Creates a new team consisting of exactly one player
+        Creates a new team ### consisting of exactly one player
         
         Args:
             name: The player's name
@@ -332,9 +348,10 @@ class Team:
         Raises:
             No errors yet... 
         """
-        self.name = name
+        self.name = "Team %02d"%index 
+        self.index = index
         self.players = []
-        self.players.append(player)
+        # self.players.append(player)
     
     def playerCount(self):
         """Count how many players there are."""
@@ -414,7 +431,9 @@ class CollaborationModel():
     def variation_2(self, team_a, team_b, player_a, player_b):
         pass
 
-    def variation_3(self, team_a, team_b, player_a, player_b):
+    def variation_3(self, player_a, player_b):
+        team_a = player_a.team
+        team_b = player_b.team
         # a_delta_if_move = 20
         # a_delta_if_stay = 50
         # b_delta_if_move = 10
@@ -426,75 +445,75 @@ class CollaborationModel():
         b_delta_if_move = player_b.currentTotal(player_a.team) - player_b.currentTotal()  # B's hypothetical total on A's - B's current total
         b_delta_if_stay = player_b.currentTotal(player_a, object_is_team=False) - player_b.currentTotal()  # B's hypothetical total if A joined B - B's current total
 
-        # Player A's soliloquy
-        print "\nI'm {0} and I get to collaborate with {1}.".format(player_a.name, player_b.name)
-        print "On my current team, I have {0} points and access to {1}".format(player_a.currentTotal(), player_a.team.resources())
-        print "If I left to join {0} with {1}, I'd have {2} points because I'd have access to {3}".format(player_b.team.name, player_b.name, player_a.currentTotal(player_b.team), player_b.team.resources())
+        # # Player A's soliloquy
+        # print "\nI'm {0} and I get to collaborate with {1}.".format(player_a.name, player_b.name)
+        # print "On my current team, I have {0} points and access to {1}".format(player_a.currentTotal(), player_a.team.resources())
+        # print "If I left to join {0} with {1}, I'd have {2} points because I'd have access to {3}".format(player_b.team.name, player_b.name, player_a.currentTotal(player_b.team), player_b.team.resources())
     
-        print "That would be a change of {0} points".format(a_delta_if_move)
-        print "But if {0} came to join my team I would have {1} points".format(player_b.name, player_a.currentTotal(player_b, object_is_team=False))
-        print "And that would be a change of {0} points".format(a_delta_if_stay)
+        # print "That would be a change of {0} points".format(a_delta_if_move)
+        # print "But if {0} came to join my team I would have {1} points".format(player_b.name, player_a.currentTotal(player_b, object_is_team=False))
+        # print "And that would be a change of {0} points".format(a_delta_if_stay)
         
-        # Player B's soliloquy
-        print "\nI'm {0} and {1} wants to collaborate with me".format(player_b.name, player_a.name)
-        print "On my current team, I have {0} points and access to {1}".format(player_b.currentTotal(), player_b.team.resources())
-        print "If I left to join {0} with {1}, I'd have {2} points because I'd have access to {3}".format(player_a.team.name, player_a.name, player_b.currentTotal(player_a.team), player_a.team.resources())
-        print "That would be a change of {0} points".format(b_delta_if_move)
-        print "But if {0} came to join my team I would have {1} points".format(player_a.name, player_b.currentTotal(player_a, object_is_team=False))
-        print "And that would be a change of {0} points".format(b_delta_if_stay)
+        # # Player B's soliloquy
+        # print "\nI'm {0} and {1} wants to collaborate with me".format(player_b.name, player_a.name)
+        # print "On my current team, I have {0} points and access to {1}".format(player_b.currentTotal(), player_b.team.resources())
+        # print "If I left to join {0} with {1}, I'd have {2} points because I'd have access to {3}".format(player_a.team.name, player_a.name, player_b.currentTotal(player_a.team), player_a.team.resources())
+        # print "That would be a change of {0} points".format(b_delta_if_move)
+        # print "But if {0} came to join my team I would have {1} points".format(player_a.name, player_b.currentTotal(player_a, object_is_team=False))
+        # print "And that would be a change of {0} points".format(b_delta_if_stay)
 
-        print "\n---------------------------\n"
+        # print "\n---------------------------\n"
 
-        print "Change for A if A moves to B:", a_delta_if_move
-        print "Change for A if B comes to A:", a_delta_if_stay
-        print "Change for B if B moves to A:", b_delta_if_move
-        print "Change for B if A comes to B:", b_delta_if_stay
+        # print "Change for A if A moves to B:", a_delta_if_move
+        # print "Change for A if B comes to A:", a_delta_if_stay
+        # print "Change for B if B moves to A:", b_delta_if_move
+        # print "Change for B if A comes to B:", b_delta_if_stay
 
-        print "\n---------------------------"
+        # print "\n---------------------------"
 
         #---------------------
         # Decision algorithm
         #---------------------
 
         def a_ask_b_to_join():
-            print "Inviting B"
+            # print "Inviting B"
             if b_delta_if_move >= 0 and b_delta_if_move > b_delta_if_stay:
-                print "This is the ideal situation; {0} will gain {1} points and {2} will gain {3}. Permission granted.".format(player_a.name, a_delta_if_stay, player_b.name, b_delta_if_move)
+                # print "This is the ideal situation; {0} will gain {1} points and {2} will gain {3}. Permission granted.".format(player_a.name, a_delta_if_stay, player_b.name, b_delta_if_move)
                 player_b.joinTeam(team_a)
                 return True
             elif b_delta_if_stay >= 0 and b_delta_if_stay > b_delta_if_move:
-                print "It's better if B stays... but why not"  # TODO: Maybe base this on a percentage?
+                # print "It's better if B stays... but why not"  # TODO: Maybe base this on a percentage?
                 player_b.joinTeam(team_a)
                 return True
             elif b_delta_if_move == b_delta_if_stay and b_delta_if_move > 0:
-                print "It doesn't matter to B. Permission granted."
+                # print "It doesn't matter to B. Permission granted."
                 player_b.joinTeam(team_a)
                 return True
             else:
-                print "Permission denied"
+                # print "Permission denied"
                 return False
 
         def a_try_move_to_b():
-            print "Trying to move"
+            # print "Trying to move"
             if b_delta_if_stay > 0 and b_delta_if_stay > b_delta_if_move:
-                print "aa This is the ideal situation; {0} will gain {1} points and {2} will gain {3}. Permission granted.".format(player_a.name, a_delta_if_move, player_b.name, b_delta_if_stay)
+                # print "aa This is the ideal situation; {0} will gain {1} points and {2} will gain {3}. Permission granted.".format(player_a.name, a_delta_if_move, player_b.name, b_delta_if_stay)
                 player_a.joinTeam(team_b)
                 return True
             elif b_delta_if_move > 0 and b_delta_if_move > b_delta_if_stay:
-                print "aa It's better if B moves... but why not"  # TODO: Maybe base this on a percentage
+                # print "aa It's better if B moves... but why not"  # TODO: Maybe base this on a percentage
                 player_a.joinTeam(team_b)
                 return True
             elif b_delta_if_stay == b_delta_if_move and b_delta_if_stay > 0:
-                print "aa It doesn't matter to B. Permission granted."
+                # print "aa It doesn't matter to B. Permission granted."
                 player_a.joinTeam(team_b)
                 return True
             else:
-                print "aa Permission denied"
+                # print "aa Permission denied"
                 return False
 
         # If both changes are negative, don't do anything
         if a_delta_if_stay <= 0 and a_delta_if_move <= 0:
-            print "All net changes are bad. Don't do anything."
+            # print "All net changes are bad. Don't do anything."
             return False
 
         # If moving to B's team is better than staying, ask permission to move
@@ -507,7 +526,7 @@ class CollaborationModel():
 
         # If staying and moving give the same benefit, choose one randomly
         elif a_delta_if_stay == a_delta_if_move and a_delta_if_move > 0:
-            print "Either option is the same" 
+            # print "Either option is the same" 
             actions = [a_try_move_to_b, a_ask_b_to_join]  # Create a list of the two functions
             shuffle(actions)  # Shuffle the list
             if actions[0]():  # Try either inviting or moving. If that fails, try the other one.
@@ -517,77 +536,103 @@ class CollaborationModel():
 
     def test_variation_4(self):
         self.players[1].joinTeam(self.teams[0])
+        self.players[5].joinTeam(self.teams[2])
         self.variation_4(self.teams[0], self.teams[2], self.players[0], self.players[2])
 
     def variation_4(self, team_a, team_b, player_a, player_b):
-        pass
+        player_a.report()
+        team_a.report()
+        print "Player A on their current team:", player_a.currentTotal()
+        print "Player A alone:", player_a.currentTotal(alone=True)
+        print ""
+
+        player_b.report()
+        team_b.report()
+        print "Player B on their current team:", player_b.currentTotal()
+        print "Player B alone:", player_b.currentTotal(alone=True)
+        print ""
+
+        print "Player A with A and B only:", player_a.currentTotal(player_b, object_is_team=False, alone=True)
+        print "Player B with A and B only:", player_b.currentTotal(player_a, object_is_team=False, alone=True)
+
+        # if team_b.playerCount() > 1:  # B's team already has two people
+        #     a_delta_if_move = 0
+        # else:                         # B's team only has one person
+        #     a_delta_if_move = player_a.currentTotal(player_b.team) - player_a.currentTotal()
+
+        # a_delta_if_move = player_a.currentTotal(player_b.team) - player_a.currentTotal()  # A's hypothetical total on B's team - A's current total
+        # a_delta_if_stay = player_a.currentTotal(player_b, object_is_team=False) - player_a.currentTotal()  # A's hypothetical total if B joins A - A's current total
+
+    def test(self):
+        community = Community(self.players, self.teams)
+
+        self.players[1].joinTeam(self.teams[0])
+        new_team = Team(community.last_team_index() + 1)
+        self.teams.append(new_team)
+
+        self.players[4].joinTeam(self.teams[16])
+
+        print community.activeTeams()
+        print community.last_team_index()
+        players_list = range(len(self.players))
+        shuffle(players_list)
+
+        for pair in pairs(players_list):
+            a = self.players[pair[0]]
+            b = self.players[pair[1]]
+            print a.name, b.name
+            # if self.variation_3(a, b) == True:
+            #     merges += 1
 
 
     def run(self):
-        team_indexes = range(num_players)
+        community = Community(self.players, self.teams)
         rounds_without_merges = 0
-        global_merges = 0
-        merges = 0
+        total_merges = 0
+        merges_this_round = 0
         
+        # Temporary team reporting
         for i in self.players:
             self.players[i].report()
         
         print ""
-
-        community = Community(self.players)
+        
         print "Total community social value before playing: " + str(community.total()) + "\n"
 
         while True:
-            global_merges += merges
-            merges = 0  # Track how many team merges happen
-            empty_teams = []  # Initialize the empty_teams list for tracking teams to remove from team_indexes
-            shuffle(team_indexes)            
-            
-            for pair in pairs(team_indexes):
-                x = pair[0]
-                y = pair[1]
+            # Track how many team merges happen
+            total_merges += merges_this_round
+            merges_this_round = 0
 
-                # print self.teams[x].name, "and", self.teams[y].name, "meet"
-                
-                # If both of the teams actualy have players...
-                if self.teams[x].playerCount() > 0 and self.teams[y].playerCount() > 0:
-                    # Compare every player in both teams using itertools.product()'s nested for loop
-                    for (team1_player, team2_player) in product(self.teams[x].players, self.teams[y].players):
-                        # This is where the different algorithms go, probably with a select case type thing (although that doesn't really exist in Python)
-                        # if self.largest_matching_team(self.teams[x], self.teams[y], team1_player, team2_player) == True:
-                        if self.variation_3(self.teams[x], self.teams[y], team1_player, team2_player) == True:
-                             merges += 1                        
-                
-                # Check the two teams to see if they're empty
-                # If so, save their index to the empty_teams list
-                if (self.teams[x].playerCount() == 0) : empty_teams.append(x)
-                if (self.teams[y].playerCount() == 0) : empty_teams.append(y)
-                                
-                # Temporary reporting stuff
-                # for team in pair:
-                #     print self.teams[team].name
-                #     for player in self.teams[team].players:
-                #         print "\t", player.name, player.resource, player.objectives
-                #     self.teams[team].report()
-                # print "\n"
-            
-            # Remove the empty teams from the team_indexes list using list comprehension
-            team_indexes = [x for x in team_indexes if x not in uniquify(empty_teams)]
+            players_list = range(len(self.players))  # Build list of player indexes
+            shuffle(players_list)  # ...and shuffle it
+
+            # Pair each index up at random... those two players then meet and run the appropriate algorithm
+            for pair in pairs(players_list):
+                a = self.players[pair[0]]
+                b = self.players[pair[1]]
+
+                if self.variation_3(a, b) == True:
+                    merges_this_round += 1
             
             # If no merges happened this round, mark it
-            if merges == 0 : rounds_without_merges += 1
+            if merges_this_round == 0:
+                rounds_without_merges += 1
             
             # If x rounds without merges happen, stop looping
-            if rounds_without_merges == faux_pareto_rounds_without_merges : break
+            if rounds_without_merges >= faux_pareto_rounds_without_merges : break
         
-        print "Total number of team switches: {0}\n".format(global_merges)
+        print "Total number of team switches: {0}\n".format(total_merges)
 
         print "Final teams:"
         for team in self.teams:
             team.report()
 
         print "Total community social value after playing: " + str(community.total()) + "\n"
-        print "Put individual player reports here"  
+        
+        # Temporary team reporting
+        for i in self.players:
+            self.players[i].report()  
             
     
     def largest_matching_team(self, team1, team2, team1_player, team2_player):
@@ -602,7 +647,8 @@ class CollaborationModel():
     def createTeams(self):
         self.teams = []
         for i, player in enumerate(self.players.values()):
-            startingTeam = Team(player, "Team %02d"%i)
+            startingTeam = Team(i)
+            startingTeam.addPlayer(player)
             self.teams.append(startingTeam)
             self.players[i].setInitialTeam(startingTeam)
     
@@ -644,7 +690,9 @@ class CollaborationModel():
 
 # for _ in xrange(5):
 # for _ in itertools.repeat(None, N):
-CollaborationModel().test_variation_4()
+# CollaborationModel().variation_3()
+# CollaborationModel().test()
+CollaborationModel().run()
 
 # # Create a community of players
 # community = Community(players=players)
