@@ -10,7 +10,7 @@
 
 # Load libraries and functions
 from collections import Counter, namedtuple
-from itertools import islice, product
+from itertools import islice
 from string import ascii_uppercase
 from random import shuffle, sample, seed
 from copy import deepcopy
@@ -40,124 +40,9 @@ shuffling = True
 #---------------------------------------------------
 #---------------------------------------------------
 
-#----------------------
-# Objects and methods
-#----------------------
-
-class Player():
-    """A player is the primary element of the simulation and is responsible for maximizing its personal or societal value by trading objectives with other players
-    
-    Attributes:
-        name: The player's name
-        resource: The name of a resource (i.e. "A")
-        objectives: A dictionary of lists, correposnding to the objective index, objective name, and objective value. (i.e. {0: ['a1', 20], 1: ['a1', 20], 2: ['a1', 20], 3: ['a1', 20], 4: ['a1', 20]})
-    
-    Returns:
-        A new player object
-    """
-
-    def __init__(self, sim, name, resource, objectives):
-        """Creates a new Player object
-        
-        Creates a player based on resources and objectives created beforehand (i.e. players should be created as part of a loop that allocates resources and objectives).
-        
-        Args:
-            name: The player's name
-            resource: The name of a resource (i.e. "A")
-            objectives: A list of objective indicies (i.e. [1, 2, 3, 4, 5])
-        
-        Raises:
-            No errors yet... I should probably build some sort of error handling eventually...
-        """
-        self.name = name
-        self.resource = resource
-        
-        # Build the dictionary of lists
-        # {`index`: [`objective name`, `objective value`]}
-        self.objectives = {}
-        for i in objectives:
-            self.objectives[i] = [objs_table[i]['name'], objs_table[i]['value']]
-
-    def currentTotal(self, test_object=None, object_is_team=True, alone=False):
-        """Sum the values of all objectives that match a player's assigned resource
-        
-        Args:
-            test_object: Either a team or a player object that will be used hypothetically
-            object_is_team: Boolean that defaults to true. By default, this will test a hypothetical team. If false, it will test a hypothetical player.
-        """
-        # If no object is specified, use the actual team
-        resources = []
-        if test_object is None:
-            if alone == True:
-                resources = list(self.resource)
-            else:
-                resources = self.team.resources()
-        else:
-            # Otherwise, create a hypothetical pool of team resources using by either 
-            # (1) Combining the hypothetical team's resources and the actual player's single resource
-            # or
-            # (2) Combining the hypothetical player's single resource and the actual player's team resources
-
-            if alone == True:
-                resources = list(self.resource)
-
-            if object_is_team == True:
-                    resources = uniquify(test_object.resources() + list(self.resource))
-            else:
-                if alone == True:
-                    resources = list(self.resource) + list(test_object.resource)
-                else:
-                    resources = uniquify(self.team.resources() + list(test_object.resource))
-        
-        # Calculate the player's total personal score based on the pool of resources available
-        total = 0
-        for index, details in self.objectives.items():
-            for resource in resources:
-                if resource == details[0][0].upper():
-                    total += details[1]
-        return total
-    
-    def dropObjective(self):
-        """docstring for dropObjective"""
-        # TODO: Drop objectives
-        pass
-    
-    def joinTeam(self, team):
-        """Add a player to a team... eventually only after checking to see if the alliance is beneficial and after dropping an objective"""
-        # Drop an objective someday
-        self.team.removePlayer(self)    # Leave current team
-        team.addPlayer(self)            # Join new team
-        self.team = team                # Reassign new team to player attributes
-    
-    def setInitialTeam(self, team):
-        self.team = team
-    
-    def report(self):
-        # Build a comma separated list of objectives
-        objectives = ', '.join('%s' % obj[0] for obj in self.objectives.values())
-        
-        print "I am %s; I have resource %s; I have objectives %s; I'm on team %s; and my total value is %s."%(self.name, self.resource, objectives, self.team.name, self.currentTotal()) 
-        
-
-class Community:
-    """docstring for World"""
-    def __init__(self, players, teams):
-        self.players = players
-        self.teams = teams
-    
-    def total(self):
-        """docstring for globalTotal"""
-        total = 0
-        for i, player in self.players.items():
-            total += player.currentTotal()
-        return total
-
-    def activeTeams(self):
-        return [ team.index for team in self.teams if team.playerCount() > 0 ]
-
-    def last_team_index(self):
-        return self.teams[-1].index
-
+#----------
+# Objects
+#----------
 
 class ResourcePool:
     """Creates a pool of resources with high and low distributions according to the frequency in `approximate_high_low_resource_ratio`
@@ -301,29 +186,24 @@ class ObjectivePool:
                 yield resource
 
 
-# Faux pretty printing functions
-def listPlayers():
-    """Print a list of all the players, their resources, objectives, and scores"""
-    print '----- Players -----'
-    for i, player in players.items():
-        print "Name:", player.name
-        print "Points:", player.currentTotal()
-        print "Resource:", player.resource
-        print "Objectives (index [objective name, objective value]):", "\n\t", player.objectives, "\n"
+class Community:
+    """docstring for Community"""
+    def __init__(self, players, teams):
+        self.players = players
+        self.teams = teams
+    
+    def total(self):
+        """docstring for globalTotal"""
+        total = 0
+        for i, player in self.players.items():
+            total += player.currentTotal()
+        return total
 
-def listPlayersPseudoTable():
-    """Print a list of all the players, their resources, objectives, and scores in a table-like format"""
-    print '----- Players -----'
-    for i, player in players.items():
-        print player.name, player.resource, player.objectives, player.currentTotal()
+    def activeTeams(self):
+        return [ team.index for team in self.teams if team.playerCount() > 0 ]
 
-def printObjectivesPool():
-    """List all the objectives and their corresponding value"""
-    print '----- Objective pool -----'
-    count = 0
-    for row in objs_table:
-        print "%02d"%count, row['name'], row['value']
-        count += 1
+    def last_team_index(self):
+        return self.teams[-1].index
 
 
 class Team:
@@ -390,33 +270,103 @@ class Team:
     def removePlayer(self, player):
         self.players.remove(player)
 
-def pairs(lst):
-    i = iter(lst)
-    first = prev = i.next()
-    for item in i:
-        yield prev, item
-        prev = item
-    yield item, first
 
-def uniquify(seq):
-    """Take a list and return only the unique values in that list. Does not preserve list order."""
-    seen = set()
-    seen_add = seen.add
-    return [ x for x in seq if x not in seen and not seen_add(x)]
+class Player:
+    """A player is the primary element of the simulation and is responsible for maximizing its personal or societal value by trading objectives with other players
+    
+    Attributes:
+        name: The player's name
+        resource: The name of a resource (i.e. "A")
+        objectives: A dictionary of lists, correposnding to the objective index, objective name, and objective value. (i.e. {0: ['a1', 20], 1: ['a1', 20], 2: ['a1', 20], 3: ['a1', 20], 4: ['a1', 20]})
+    
+    Returns:
+        A new player object
+    """
+
+    def __init__(self, sim, name, resource, objectives):
+        """Creates a new Player object
+        
+        Creates a player based on resources and objectives created beforehand (i.e. players should be created as part of a loop that allocates resources and objectives).
+        
+        Args:
+            name: The player's name
+            resource: The name of a resource (i.e. "A")
+            objectives: A list of objective indicies (i.e. [1, 2, 3, 4, 5])
+        
+        Raises:
+            No errors yet... I should probably build some sort of error handling eventually...
+        """
+        self.name = name
+        self.resource = resource
+        
+        # Build the dictionary of lists
+        # {`index`: [`objective name`, `objective value`]}
+        self.objectives = {}
+        for i in objectives:
+            self.objectives[i] = [objs_table[i]['name'], objs_table[i]['value']]
+
+    def currentTotal(self, test_object=None, object_is_team=True, alone=False):
+        """Sum the values of all objectives that match a player's assigned resource
+        
+        Args:
+            test_object: Either a team or a player object that will be used hypothetically
+            object_is_team: Boolean that defaults to true. By default, this will test a hypothetical team. If false, it will test a hypothetical player.
+        """
+        # If no object is specified, use the actual team
+        resources = []
+        if test_object is None:
+            if alone == True:
+                resources = list(self.resource)
+            else:
+                resources = self.team.resources()
+        else:
+            # Otherwise, create a hypothetical pool of team resources using by either 
+            # (1) Combining the hypothetical team's resources and the actual player's single resource
+            # or
+            # (2) Combining the hypothetical player's single resource and the actual player's team resources
+
+            if alone == True:
+                resources = list(self.resource)
+
+            if object_is_team == True:
+                    resources = uniquify(test_object.resources() + list(self.resource))
+            else:
+                if alone == True:
+                    resources = list(self.resource) + list(test_object.resource)
+                else:
+                    resources = uniquify(self.team.resources() + list(test_object.resource))
+        
+        # Calculate the player's total personal score based on the pool of resources available
+        total = 0
+        for index, details in self.objectives.items():
+            for resource in resources:
+                if resource == details[0][0].upper():
+                    total += details[1]
+        return total
+    
+    def dropObjective(self):
+        """docstring for dropObjective"""
+        # TODO: Drop objectives
+        pass
+    
+    def joinTeam(self, team):
+        """Add a player to a team... eventually only after checking to see if the alliance is beneficial and after dropping an objective"""
+        # Drop an objective someday
+        self.team.removePlayer(self)    # Leave current team
+        team.addPlayer(self)            # Join new team
+        self.team = team                # Reassign new team to player attributes
+    
+    def setInitialTeam(self, team):
+        self.team = team
+    
+    def report(self):
+        # Build a comma separated list of objectives
+        objectives = ', '.join('%s' % obj[0] for obj in self.objectives.values())
+        
+        print "I am %s; I have resource %s; I have objectives %s; I'm on team %s; and my total value is %s."%(self.name, self.resource, objectives, self.team.name, self.currentTotal()) 
 
 
-#------------------------------------------------
-#-------------
-# Procedures
-#-------------
-
-# Create the resource and objective pools
-resource_pool = ResourcePool(num_resources, num_players)
-objective_pool = ObjectivePool(resource_pool)
-objs_table = objective_pool.table
-
-
-class CollaborationModel():
+class CollaborationModel:
     def __init__(self):
         self.build()
         self.createTeams()
@@ -584,7 +534,6 @@ class CollaborationModel():
             # if self.variation_3(a, b) == True:
             #     merges += 1
 
-
     def run(self):
         community = Community(self.players, self.teams)
         rounds_without_merges = 0
@@ -592,10 +541,9 @@ class CollaborationModel():
         merges_this_round = 0
         
         # Temporary team reporting
-        for i in self.players:
-            self.players[i].report()
-        
-        print ""
+        # for i in self.players:
+            # self.players[i].report()
+        # print ""
         
         print "Total community social value before playing: " + str(community.total()) + "\n"
 
@@ -629,10 +577,10 @@ class CollaborationModel():
             team.report()
 
         print "Total community social value after playing: " + str(community.total()) + "\n"
-        
+
         # Temporary team reporting
-        for i in self.players:
-            self.players[i].report()  
+        # for i in self.players:
+            # self.players[i].report()  
             
     
     def largest_matching_team(self, team1, team2, team1_player, team2_player):
@@ -688,15 +636,63 @@ class CollaborationModel():
         
         self.players = players
 
-# for _ in xrange(5):
-# for _ in itertools.repeat(None, N):
-# CollaborationModel().variation_3()
-# CollaborationModel().test()
+
+# Important mini functions
+def pairs(lst):
+    i = iter(lst)
+    first = prev = i.next()
+    for item in i:
+        yield prev, item
+        prev = item
+    yield item, first
+
+def uniquify(seq):
+    """Take a list and return only the unique values in that list. Does not preserve list order."""
+    seen = set()
+    seen_add = seen.add
+    return [ x for x in seq if x not in seen and not seen_add(x)]
+
+
+# Temporary faux pretty printing functions
+def listPlayers():
+    """Print a list of all the players, their resources, objectives, and scores"""
+    print '----- Players -----'
+    for i, player in players.items():
+        print "Name:", player.name
+        print "Points:", player.currentTotal()
+        print "Resource:", player.resource
+        print "Objectives (index [objective name, objective value]):", "\n\t", player.objectives, "\n"
+
+def listPlayersPseudoTable():
+    """Print a list of all the players, their resources, objectives, and scores in a table-like format"""
+    print '----- Players -----'
+    for i, player in players.items():
+        print player.name, player.resource, player.objectives, player.currentTotal()
+
+def printObjectivesPool():
+    """List all the objectives and their corresponding value"""
+    print '----- Objective pool -----'
+    count = 0
+    for row in objs_table:
+        print "%02d"%count, row['name'], row['value']
+        count += 1
+
+
+#------------------------------------------------------------------------------
+#------------------------------
+# Actual simulation procedure
+#------------------------------
+# Create the global resource and objective pools 
+resource_pool = ResourcePool(num_resources, num_players)
+objective_pool = ObjectivePool(resource_pool)
+objs_table = objective_pool.table
+
+# Run the simulation
 CollaborationModel().run()
 
-# # Create a community of players
-# community = Community(players=players)
-# print "Total community social value: " + str(community.total()) + "\n"
-
+# Extra sandboxy stuff
+# for _ in xrange(5):
+# for _ in itertools.repeat(None, N):
+# CollaborationModel().test()
 # # Print out players
 # listPlayers()
