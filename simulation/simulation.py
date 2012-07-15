@@ -562,6 +562,9 @@ class CollaborationModel:
 
                 if self.variation_3(a, b) == True:
                     merges_this_round += 1
+                if a.team != b.team:  # If the players aren't already on the same team
+                    if self.variation_3(a, b) == True:
+                        merges_this_round += 1
             
             # If no merges happened this round, mark it
             if merges_this_round == 0:
