@@ -28,6 +28,7 @@ approximate_high_low_resource_ratio = 3
 approximate_high_low_objective_ratio = 3
 faux_pareto_rounds_without_merges = 500
 variation = 0
+community_motivation = False  # Set to True to have everyone work for community value instead of personal value
 # seed(4567890)
 
 # Turn on random allocation
@@ -305,7 +306,6 @@ class Player:
         for i in objectives:
             self.objectives[i] = [objs_table[i]['name'], objs_table[i]['value']]
 
-    def currentTotal(self, test_object=None, object_is_team=True, alone=False):
     def currentTotal(self, test_object=None, object_is_team=True, new_team=False):
         """Sum the values of all objectives that match a player's assigned resource
         
@@ -372,15 +372,15 @@ class CollaborationModel:
         self.build()
         self.createTeams()
 
-    def test_variation_3(self):
-        self.players[1].joinTeam(self.teams[0])
-        self.variation_3(self.teams[0], self.teams[2], self.players[0], self.players[2])
-
     def variation_1(self, team_a, team_b, player_a, player_b):
         pass
 
     def variation_2(self, team_a, team_b, player_a, player_b):
         pass
+
+    def test_variation_3(self):
+        self.players[1].joinTeam(self.teams[0])
+        self.variation_3(self.teams[0], self.teams[2], self.players[0], self.players[2])
 
     def variation_3(self, player_a, player_b):
         team_a = player_a.team
@@ -389,12 +389,14 @@ class CollaborationModel:
         # a_delta_if_stay = 50
         # b_delta_if_move = 10
         # b_delta_if_stay = 40
-
-        a_delta_if_move = player_a.currentTotal(player_b.team) - player_a.currentTotal()  # A's hypothetical total on B's team - A's current total
-        a_delta_if_stay = player_a.currentTotal(player_b, object_is_team=False) - player_a.currentTotal()  # A's hypothetical total if B joins A - A's current total
-        
-        b_delta_if_move = player_b.currentTotal(player_a.team) - player_b.currentTotal()  # B's hypothetical total on A's - B's current total
-        b_delta_if_stay = player_b.currentTotal(player_a, object_is_team=False) - player_b.currentTotal()  # B's hypothetical total if A joined B - B's current total
+        # TODO: Make these conditional on community vs. individual welfare. Keep variable names the same.
+        if community_motivation is True:
+        else:
+            a_delta_if_move = player_a.currentTotal(player_b.team) - player_a.currentTotal()  # A's hypothetical total on B's team - A's current total
+            a_delta_if_stay = player_a.currentTotal(player_b, object_is_team=False) - player_a.currentTotal()  # A's hypothetical total if B joins A - A's current total
+            
+            b_delta_if_move = player_b.currentTotal(player_a.team) - player_b.currentTotal()  # B's hypothetical total on A's - B's current total
+            b_delta_if_stay = player_b.currentTotal(player_a, object_is_team=False) - player_b.currentTotal()  # B's hypothetical total if A joined B - B's current total
 
         # # Player A's soliloquy
         # print "\nI'm {0} and I get to collaborate with {1}.".format(player_a.name, player_b.name)
@@ -433,7 +435,7 @@ class CollaborationModel:
                 player_b.joinTeam(team_a)
                 return True
             elif b_delta_if_stay >= 0 and b_delta_if_stay > b_delta_if_move:
-                # print "It's better if B stays... but why not"  # TODO: Maybe base this on a percentage?
+                # print "It's better if B stays... but why not"  # TODO: Don't have the player join
                 player_b.joinTeam(team_a)
                 return True
             elif b_delta_if_move == b_delta_if_stay and b_delta_if_move > 0:
@@ -451,7 +453,7 @@ class CollaborationModel:
                 player_a.joinTeam(team_b)
                 return True
             elif b_delta_if_move > 0 and b_delta_if_move > b_delta_if_stay:
-                # print "aa It's better if B moves... but why not"  # TODO: Maybe base this on a percentage
+                # print "aa It's better if B moves... but why not"  # TODO: Don't have the player join
                 player_a.joinTeam(team_b)
                 return True
             elif b_delta_if_stay == b_delta_if_move and b_delta_if_stay > 0:
@@ -461,6 +463,8 @@ class CollaborationModel:
             else:
                 # print "aa Permission denied"
                 return False
+            # TODO: Let B try to make an offer if none was made
+            # TODO: Use a boolean and return that at the end instead of tons of returns in the middle
 
         # If both changes are negative, don't do anything
         if a_delta_if_stay <= 0 and a_delta_if_move <= 0:
