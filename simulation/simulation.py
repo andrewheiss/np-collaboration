@@ -379,16 +379,20 @@ class CollaborationModel:
         pass
 
     def test_variation_3(self):
+        community = Community(self.players, self.teams)
         self.players[1].joinTeam(self.teams[0])
-        self.variation_3(self.teams[0], self.teams[2], self.players[0], self.players[2])
+        self.variation_3(self.players[0], self.players[2], community)
 
-    def variation_3(self, player_a, player_b):
+    def variation_3(self, player_a, player_b, community):
+        merged = False
         team_a = player_a.team
         team_b = player_b.team
+
         # a_delta_if_move = 20
         # a_delta_if_stay = 50
         # b_delta_if_move = 10
         # b_delta_if_stay = 40
+
         # TODO: Make these conditional on community vs. individual welfare. Keep variable names the same.
         if community_motivation is True:
             pass
@@ -429,66 +433,85 @@ class CollaborationModel:
         # Decision algorithm
         #---------------------
 
-        def a_ask_b_to_join():
-            # print "Inviting B"
-            if b_delta_if_move >= 0 and b_delta_if_move > b_delta_if_stay:
-                # print "This is the ideal situation; {0} will gain {1} points and {2} will gain {3}. Permission granted.".format(player_a.name, a_delta_if_stay, player_b.name, b_delta_if_move)
-                player_b.joinTeam(team_a)
+        def invite(inviter, invitee, delta_if_move, delta_if_stay):
+            # print "{0} inviting {1}".format(inviter.name, invitee.name)
+            if delta_if_move >= 0 and delta_if_move > delta_if_stay:
+                # print "This is the ideal situation; {0} will gain {1} points and {2} will gain {3}. Permission granted.".format(inviter.name, delta_if_stay, invitee.name, delta_if_move)
+                invitee.joinTeam(invitee.team)
                 return True
-            elif b_delta_if_stay >= 0 and b_delta_if_stay > b_delta_if_move:
-                # print "It's better if B stays... but why not"  # TODO: Don't have the player join
-                player_b.joinTeam(team_a)
-                return True
-            elif b_delta_if_move == b_delta_if_stay and b_delta_if_move > 0:
-                # print "It doesn't matter to B. Permission granted."
-                player_b.joinTeam(team_a)
+            elif delta_if_stay >= 0 and delta_if_stay > delta_if_move:
+                # print "It's better if the invitee stays... "
+                # invitee.joinTeam(invitee.team)
+                return False
+            elif delta_if_move == delta_if_stay and delta_if_move > 0:
+                # print "It doesn't matter to the invitee. Permission granted."
+                invitee.joinTeam(invitee.team)
                 return True
             else:
                 # print "Permission denied"
                 return False
 
-        def a_try_move_to_b():
-            # print "Trying to move"
-            if b_delta_if_stay > 0 and b_delta_if_stay > b_delta_if_move:
-                # print "aa This is the ideal situation; {0} will gain {1} points and {2} will gain {3}. Permission granted.".format(player_a.name, a_delta_if_move, player_b.name, b_delta_if_stay)
-                player_a.joinTeam(team_b)
-                return True
-            elif b_delta_if_move > 0 and b_delta_if_move > b_delta_if_stay:
                 # print "aa It's better if B moves... but why not"  # TODO: Don't have the player join
                 player_a.joinTeam(team_b)
+        def move(asker, askee, delta_if_move, delta_if_stay):
+            # print "{0} trying to join {1}".format(asker.name, askee.name)
+            if delta_if_stay > 0 and delta_if_stay > delta_if_move:
+                # print "This is the ideal situation; {0} will gain {1} points and {2} will gain {3}. Permission granted.".format(asker.name, a_delta_if_move, askee.name, delta_if_stay)
+                asker.joinTeam(askee.team)
                 return True
-            elif b_delta_if_stay == b_delta_if_move and b_delta_if_stay > 0:
-                # print "aa It doesn't matter to B. Permission granted."
-                player_a.joinTeam(team_b)
+            elif delta_if_move > 0 and delta_if_move > delta_if_stay:
+                # print "It's better if the askee moves... "
+                # asker.joinTeam(askee.team)
+            elif delta_if_stay == delta_if_move and delta_if_stay > 0:
+                # print "It doesn't matter to the askee. Permission granted."
+                asker.joinTeam(askee.team)
                 return True
             else:
-                # print "aa Permission denied"
+                # print "Permission denied"
                 return False
-            # TODO: Let B try to make an offer if none was made
-            # TODO: Use a boolean and return that at the end instead of tons of returns in the middle
 
         # If both changes are negative, don't do anything
         if a_delta_if_stay <= 0 and a_delta_if_move <= 0:
             # print "All net changes are bad. Don't do anything."
-            return False
+            merged = False
 
         # If moving to B's team is better than staying, ask permission to move
         elif a_delta_if_move >= 0 and a_delta_if_move > a_delta_if_stay:
-            return a_try_move_to_b()
+            merged = move(player_a, player_b, b_delta_if_move, b_delta_if_stay)
 
         # If staying is better than moving to B's team, invite B to join
         elif a_delta_if_stay >= 0 and a_delta_if_stay > a_delta_if_move:
-            return a_ask_b_to_join()
+            merged = invite(player_a, player_b, b_delta_if_move, b_delta_if_stay)
 
         # If staying and moving give the same benefit, choose one randomly
         elif a_delta_if_stay == a_delta_if_move and a_delta_if_move > 0:
             # print "Either option is the same" 
-            actions = [a_try_move_to_b, a_ask_b_to_join]  # Create a list of the two functions
+            actions = [move, invite]  # Create a list of the two functions
             shuffle(actions)  # Shuffle the list
-            if actions[0]():  # Try either inviting or moving. If that fails, try the other one.
                 return True
+            if actions[0](player_a, player_b, b_delta_if_move, b_delta_if_stay):  # Try either inviting or moving. If that fails, try the other one.
+                merged = True
             else:
-                return actions[1]()
+                merged = actions[1](player_a, player_b, b_delta_if_move, b_delta_if_stay)
+
+        # A didn't do anything. Let B have a turn.
+        if merged is False:
+            # If both changes are negative, don't do anything
+            if b_delta_if_stay <= 0 and b_delta_if_move <= 0:
+                # print "All net changes are bad. Don't do anything."
+                merged = False
+
+            # If moving to A's team is better than staying, ask permission to move
+            elif b_delta_if_move >= 0 and b_delta_if_move > b_delta_if_stay:
+                merged = move(player_b, player_a, a_delta_if_move, a_delta_if_stay)
+            # If staying is better than moving to A's team, invite A to join
+            elif b_delta_if_stay >= 0 and b_delta_if_stay > b_delta_if_move:
+
+                # print "Either option is the same" 
+                actions = [move, invite]  # Create a list of the two functions
+                    merged = actions[1](player_b, player_a, a_delta_if_move, a_delta_if_stay)
+
+        return merged
 
     def test_variation_4(self):
         community = Community(self.players, self.teams)
@@ -604,13 +627,14 @@ class CollaborationModel:
             players_list = range(len(self.players))  # Build list of player indexes
             shuffle(players_list)  # ...and shuffle it
 
+            # TODO: Maybe make this team based again... too many people are maybe ending up alone...
             # Pair each index up at random... those two players then meet and run the appropriate algorithm
             for pair in pairs(players_list):
                 a = self.players[pair[0]]
                 b = self.players[pair[1]]
 
                 if a.team != b.team:  # If the players aren't already on the same team
-                    if self.variation_4(a, b, community) == True:
+                    if self.variation_3(a, b, community) == True:
                         merges_this_round += 1
             
             # If no merges happened this round, mark it
@@ -618,7 +642,7 @@ class CollaborationModel:
                 rounds_without_merges += 1
             
             # If x rounds without merges happen, stop looping
-            if rounds_without_merges >= faux_pareto_rounds_without_merges : break
+            if rounds_without_merges == faux_pareto_rounds_without_merges : break
 
         print "-----------------------------------------------------------------------------------------------------------------------"
         print "Final team allocations:"
@@ -638,6 +662,7 @@ class CollaborationModel:
         print "\nTotal number of team switches: {0}".format(total_merges)
         print "Total community social value before playing: " + before_total
         print "Total community social value after playing: " + str(community.total())
+        # print before_total, str(community.total())
             
     
     def largest_matching_team(self, team1, team2, team1_player, team2_player):
