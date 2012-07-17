@@ -306,18 +306,22 @@ class Player:
             self.objectives[i] = [objs_table[i]['name'], objs_table[i]['value']]
 
     def currentTotal(self, test_object=None, object_is_team=True, alone=False):
+    def currentTotal(self, test_object=None, object_is_team=True, new_team=False):
         """Sum the values of all objectives that match a player's assigned resource
         
         Args:
             test_object: Either a team or a player object that will be used hypothetically
             object_is_team: Boolean that defaults to true. By default, this will test a hypothetical team. If false, it will test a hypothetical player.
         """
-        # If no object is specified, use the actual team
+
+        # Check to make sure the method is called properly
+        if (object_is_team is True or test_object is None) and new_team is True:
+            raise Exception("Can't use `new_team` on a team object or without a `test_object`")
+
         resources = []
+
+        # If no object is specified, use the actual team
         if test_object is None:
-            if alone == True:
-                resources = list(self.resource)
-            else:
                 resources = self.team.resources()
         else:
             # Otherwise, create a hypothetical pool of team resources using by either 
@@ -325,14 +329,11 @@ class Player:
             # or
             # (2) Combining the hypothetical player's single resource and the actual player's team resources
 
-            if alone == True:
-                resources = list(self.resource)
-
             if object_is_team == True:
                     resources = uniquify(test_object.resources() + list(self.resource))
             else:
-                if alone == True:
-                    resources = list(self.resource) + list(test_object.resource)
+                if new_team == True:
+                    resources = uniquify(list(self.resource) + list(test_object.resource))
                 else:
                     resources = uniquify(self.team.resources() + list(test_object.resource))
         
