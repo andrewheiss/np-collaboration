@@ -451,8 +451,6 @@ class CollaborationModel:
                 # print "Permission denied"
                 return False
 
-                # print "aa It's better if B moves... but why not"  # TODO: Don't have the player join
-                player_a.joinTeam(team_b)
         def move(asker, askee, delta_if_move, delta_if_stay):
             # print "{0} trying to join {1}".format(asker.name, askee.name)
             if delta_if_stay > 0 and delta_if_stay > delta_if_move:
@@ -462,6 +460,7 @@ class CollaborationModel:
             elif delta_if_move > 0 and delta_if_move > delta_if_stay:
                 # print "It's better if the askee moves... "
                 # asker.joinTeam(askee.team)
+                return False
             elif delta_if_stay == delta_if_move and delta_if_stay > 0:
                 # print "It doesn't matter to the askee. Permission granted."
                 asker.joinTeam(askee.team)
@@ -488,7 +487,6 @@ class CollaborationModel:
             # print "Either option is the same" 
             actions = [move, invite]  # Create a list of the two functions
             shuffle(actions)  # Shuffle the list
-                return True
             if actions[0](player_a, player_b, b_delta_if_move, b_delta_if_stay):  # Try either inviting or moving. If that fails, try the other one.
                 merged = True
             else:
@@ -504,11 +502,19 @@ class CollaborationModel:
             # If moving to A's team is better than staying, ask permission to move
             elif b_delta_if_move >= 0 and b_delta_if_move > b_delta_if_stay:
                 merged = move(player_b, player_a, a_delta_if_move, a_delta_if_stay)
+
             # If staying is better than moving to A's team, invite A to join
             elif b_delta_if_stay >= 0 and b_delta_if_stay > b_delta_if_move:
+                merged = invite(player_b, player_a, a_delta_if_move, a_delta_if_stay)
 
+            # If staying and moving give the same benefit, choose one randomly
+            elif b_delta_if_stay == b_delta_if_move and b_delta_if_move > 0:
                 # print "Either option is the same" 
                 actions = [move, invite]  # Create a list of the two functions
+                shuffle(actions)  # Shuffle the list
+                if actions[0](player_b, player_a, a_delta_if_move, a_delta_if_stay):  # Try either inviting or moving. If that fails, try the other one.
+                    merged = True
+                else:
                     merged = actions[1](player_b, player_a, a_delta_if_move, a_delta_if_stay)
 
         return merged
