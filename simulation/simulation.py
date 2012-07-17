@@ -391,6 +391,7 @@ class CollaborationModel:
         # b_delta_if_stay = 40
         # TODO: Make these conditional on community vs. individual welfare. Keep variable names the same.
         if community_motivation is True:
+            pass
         else:
             a_delta_if_move = player_a.currentTotal(player_b.team) - player_a.currentTotal()  # A's hypothetical total on B's team - A's current total
             a_delta_if_stay = player_a.currentTotal(player_b, object_is_team=False) - player_a.currentTotal()  # A's hypothetical total if B joins A - A's current total
@@ -490,33 +491,73 @@ class CollaborationModel:
                 return actions[1]()
 
     def test_variation_4(self):
-        self.players[1].joinTeam(self.teams[0])
+        community = Community(self.players, self.teams)
+        # self.players[1].joinTeam(self.teams[0])
         self.players[5].joinTeam(self.teams[2])
-        self.variation_4(self.teams[0], self.teams[2], self.players[0], self.players[2])
+        self.variation_4(self.players[0], self.players[2], community)
 
-    def variation_4(self, team_a, team_b, player_a, player_b):
-        player_a.report()
-        team_a.report()
-        print "Player A on their current team:", player_a.currentTotal()
-        print "Player A alone:", player_a.currentTotal(alone=True)
-        print ""
+    def variation_4(self, player_a, player_b, community):
+        merge_occurred = False
+        team_a = player_a.team
+        team_b = player_b.team
 
-        player_b.report()
-        team_b.report()
-        print "Player B on their current team:", player_b.currentTotal()
-        print "Player B alone:", player_b.currentTotal(alone=True)
-        print ""
+        # TODO: Make these conditional on community vs. individual welfare. Keep variable names the same.
+        if community_motivation is True:
+            pass
+        else:
+            a_current = player_a.currentTotal()
+            b_current = player_b.currentTotal()
+            a_new_team = player_a.currentTotal(player_b, object_is_team=False, new_team=True)
+            b_new_team = player_b.currentTotal(player_a, object_is_team=False, new_team=True)
+            a_delta_if_new_team = a_new_team - a_current
+            b_delta_if_new_team = b_new_team - b_current
 
-        print "Player A with A and B only:", player_a.currentTotal(player_b, object_is_team=False, alone=True)
-        print "Player B with A and B only:", player_b.currentTotal(player_a, object_is_team=False, alone=True)
+        # print "\nPlayer A with A+B team:", player_a.currentTotal(player_b, object_is_team=False, new_team=True)
+        # print "Player B with A+B team:", player_b.currentTotal(player_a, object_is_team=False, new_team=True)
 
-        # if team_b.playerCount() > 1:  # B's team already has two people
-        #     a_delta_if_move = 0
-        # else:                         # B's team only has one person
-        #     a_delta_if_move = player_a.currentTotal(player_b.team) - player_a.currentTotal()
+        # print "\nChange for A if create A+B team:", a_delta_if_new_team
+        # print "Change for B if create A+B team:", b_delta_if_new_team
 
-        # a_delta_if_move = player_a.currentTotal(player_b.team) - player_a.currentTotal()  # A's hypothetical total on B's team - A's current total
-        # a_delta_if_stay = player_a.currentTotal(player_b, object_is_team=False) - player_a.currentTotal()  # A's hypothetical total if B joins A - A's current total
+        # A's turn to make changes first
+        if a_delta_if_new_team > 0:
+            # print "Try to make a new team with B."
+
+            if b_delta_if_new_team > 0:
+                # print "B agrees. Make a new team."
+                merge_occurred = True
+            else:
+                # print "B doesn't agree. No new team."
+                merge_occurred = False
+        else:
+            # print "Don't try to make a new team."
+            merge_occurred = False
+
+        # If nothing happened, let B try to make a change
+        if merge_occurred is False:
+            # print "B wants to try something too."
+
+            if b_delta_if_new_team > 0:
+                if a_delta_if_new_team > 0:
+                    # print "A agrees. Make a new team."
+                    merge_occurred = True
+                else:
+                    # print "A doesn't agree. No new team."
+                    merge_occurred = False
+            else:
+                # print "Just kidding. B doesn't want to do anything."
+                merge_occurred = False
+
+        if merge_occurred:
+            # print "Yay! Something good happened!"
+            newTeam = Team(community.last_team_index() + 1)
+            self.teams.append(newTeam)
+            player_a.joinTeam(newTeam)
+            player_b.joinTeam(newTeam)
+            return True
+        else:
+            # print "Nope. Nothing good could happen. Carry on."
+            return False
+
 
     def test(self):
         community = Community(self.players, self.teams)
@@ -545,12 +586,15 @@ class CollaborationModel:
         total_merges = 0
         merges_this_round = 0
         
-        # Temporary team reporting
+        # # Temporary team reporting
+        # print "-----------------------------------------------------------------------------------------------------------------------"
+        # print "Initial player allocations:"
+        # print "-----------------------------------------------------------------------------------------------------------------------"
         # for i in self.players:
-            # self.players[i].report()
-        # print ""
+        #     self.players[i].report()
+        # print "-----------------------------------------------------------------------------------------------------------------------\n"
         
-        print "Total community social value before playing: " + str(community.total()) + "\n"
+        before_total = str(community.total())
 
         while True:
             # Track how many team merges happen
@@ -565,10 +609,8 @@ class CollaborationModel:
                 a = self.players[pair[0]]
                 b = self.players[pair[1]]
 
-                if self.variation_3(a, b) == True:
-                    merges_this_round += 1
                 if a.team != b.team:  # If the players aren't already on the same team
-                    if self.variation_3(a, b) == True:
+                    if self.variation_4(a, b, community) == True:
                         merges_this_round += 1
             
             # If no merges happened this round, mark it
@@ -577,18 +619,25 @@ class CollaborationModel:
             
             # If x rounds without merges happen, stop looping
             if rounds_without_merges >= faux_pareto_rounds_without_merges : break
-        
-        print "Total number of team switches: {0}\n".format(total_merges)
 
-        print "Final teams:"
+        print "-----------------------------------------------------------------------------------------------------------------------"
+        print "Final team allocations:"
+        print "-----------------------------------------------------------------------------------------------------------------------"
         for team in self.teams:
             team.report()
+        print "-----------------------------------------------------------------------------------------------------------------------"
 
-        print "Total community social value after playing: " + str(community.total()) + "\n"
-
-        # Temporary team reporting
+        # # Temporary team reporting
+        # print "\n-----------------------------------------------------------------------------------------------------------------------"
+        # print "Final player allocations:"
+        # print "-----------------------------------------------------------------------------------------------------------------------"
         # for i in self.players:
-            # self.players[i].report()  
+        #     self.players[i].report()
+        # print "-----------------------------------------------------------------------------------------------------------------------\n"
+
+        print "\nTotal number of team switches: {0}".format(total_merges)
+        print "Total community social value before playing: " + before_total
+        print "Total community social value after playing: " + str(community.total())
             
     
     def largest_matching_team(self, team1, team2, team1_player, team2_player):
@@ -697,6 +746,7 @@ objs_table = objective_pool.table
 
 # Run the simulation
 CollaborationModel().run()
+# CollaborationModel().test_variation_4()
 
 # Extra sandboxy stuff
 # for _ in xrange(5):
