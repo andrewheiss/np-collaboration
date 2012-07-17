@@ -29,6 +29,7 @@ approximate_high_low_objective_ratio = 3
 faux_pareto_rounds_without_merges = 500
 variation = 0
 community_motivation = False  # Set to True to have everyone work for community value instead of personal value
+times_to_run_simulation = 1
 # seed(4567890)
 
 # Turn on random allocation
@@ -770,18 +771,14 @@ def printObjectivesPool():
 #------------------------------
 # Actual simulation procedure
 #------------------------------
-# Create the global resource and objective pools 
-resource_pool = ResourcePool(num_resources, num_players)
-objective_pool = ObjectivePool(resource_pool)
-objs_table = objective_pool.table
 
-# Run the simulation
-CollaborationModel().run()
-# CollaborationModel().test_variation_4()
+for _ in xrange(times_to_run_simulation):
+    # Create the global resource and objective pools 
+    resource_pool = ResourcePool(num_resources, num_players)
+    objective_pool = ObjectivePool(resource_pool)
+    objs_table = objective_pool.table
 
-# Extra sandboxy stuff
-# for _ in xrange(5):
-# for _ in itertools.repeat(None, N):
-# CollaborationModel().test()
-# # Print out players
-# listPlayers()
+    # Run the simulation
+    # CollaborationModel().test_variation_3()
+    CollaborationModel().run()
+
