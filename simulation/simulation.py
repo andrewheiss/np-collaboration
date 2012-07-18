@@ -12,7 +12,7 @@
 from collections import Counter, namedtuple
 from itertools import islice
 from string import ascii_uppercase
-from random import shuffle, sample, seed
+from random import shuffle, sample, seed, choice
 from copy import deepcopy
 
 #------------------------
@@ -400,7 +400,6 @@ class CollaborationModel:
         else:
             a_delta_if_move = player_a.currentTotal(player_b.team) - player_a.currentTotal()  # A's hypothetical total on B's team - A's current total
             a_delta_if_stay = player_a.currentTotal(player_b, object_is_team=False) - player_a.currentTotal()  # A's hypothetical total if B joins A - A's current total
-            
             b_delta_if_move = player_b.currentTotal(player_a.team) - player_b.currentTotal()  # B's hypothetical total on A's - B's current total
             b_delta_if_stay = player_b.currentTotal(player_a, object_is_team=False) - player_b.currentTotal()  # B's hypothetical total if A joined B - B's current total
 
@@ -433,7 +432,6 @@ class CollaborationModel:
         #---------------------
         # Decision algorithm
         #---------------------
-
         def invite(inviter, invitee, delta_if_move, delta_if_stay):
             # print "{0} inviting {1}".format(inviter.name, invitee.name)
             if delta_if_move >= 0 and delta_if_move > delta_if_stay:
@@ -442,8 +440,9 @@ class CollaborationModel:
                 return True
             elif delta_if_stay >= 0 and delta_if_stay > delta_if_move:
                 # print "It's better if the invitee stays... "
-                # invitee.joinTeam(invitee.team)
-                return False
+                invitee.joinTeam(invitee.team)
+                return True
+                # return False
             elif delta_if_move == delta_if_stay and delta_if_move > 0:
                 # print "It doesn't matter to the invitee. Permission granted."
                 invitee.joinTeam(invitee.team)
@@ -452,19 +451,20 @@ class CollaborationModel:
                 # print "Permission denied"
                 return False
 
-        def move(asker, askee, delta_if_move, delta_if_stay):
-            # print "{0} trying to join {1}".format(asker.name, askee.name)
+        def move(asker, asked, delta_if_move, delta_if_stay):
+            # print "{0} trying to join {1}".format(asker.name, asked.name)
             if delta_if_stay > 0 and delta_if_stay > delta_if_move:
-                # print "This is the ideal situation; {0} will gain {1} points and {2} will gain {3}. Permission granted.".format(asker.name, a_delta_if_move, askee.name, delta_if_stay)
-                asker.joinTeam(askee.team)
+                # print "This is the ideal situation; {0} will gain {1} points and {2} will gain {3}. Permission granted.".format(asker.name, a_delta_if_move, asked.name, delta_if_stay)
+                asker.joinTeam(asked.team)
                 return True
             elif delta_if_move > 0 and delta_if_move > delta_if_stay:
-                # print "It's better if the askee moves... "
-                # asker.joinTeam(askee.team)
-                return False
+                # print "It's better if the asked moves... "
+                asker.joinTeam(asked.team)
+                return True
+                # return False
             elif delta_if_stay == delta_if_move and delta_if_stay > 0:
-                # print "It doesn't matter to the askee. Permission granted."
-                asker.joinTeam(askee.team)
+                # print "It doesn't matter to the asked. Permission granted."
+                asker.joinTeam(asked.team)
                 return True
             else:
                 # print "Permission denied"
@@ -483,40 +483,23 @@ class CollaborationModel:
         elif a_delta_if_stay >= 0 and a_delta_if_stay > a_delta_if_move:
             merged = invite(player_a, player_b, b_delta_if_move, b_delta_if_stay)
 
-        # If staying and moving give the same benefit, choose one randomly
+        # If staying and moving give the same benefit, let B choose which one they want to do
         elif a_delta_if_stay == a_delta_if_move and a_delta_if_move > 0:
             # print "Either option is the same" 
-            actions = [move, invite]  # Create a list of the two functions
-            shuffle(actions)  # Shuffle the list
-            if actions[0](player_a, player_b, b_delta_if_move, b_delta_if_stay):  # Try either inviting or moving. If that fails, try the other one.
-                merged = True
-            else:
-                merged = actions[1](player_a, player_b, b_delta_if_move, b_delta_if_stay)
 
-        # A didn't do anything. Let B have a turn.
-        if merged is False:
-            # If both changes are negative, don't do anything
-            if b_delta_if_stay <= 0 and b_delta_if_move <= 0:
-                # print "All net changes are bad. Don't do anything."
-                merged = False
-
-            # If moving to A's team is better than staying, ask permission to move
-            elif b_delta_if_move >= 0 and b_delta_if_move > b_delta_if_stay:
+            if b_delta_if_move >= 0 and b_delta_if_move > b_delta_if_stay:
+                # print "Try to move to A"
                 merged = move(player_b, player_a, a_delta_if_move, a_delta_if_stay)
-
-            # If staying is better than moving to A's team, invite A to join
             elif b_delta_if_stay >= 0 and b_delta_if_stay > b_delta_if_move:
+                # print "Invite A to join B"
                 merged = invite(player_b, player_a, a_delta_if_move, a_delta_if_stay)
-
-            # If staying and moving give the same benefit, choose one randomly
             elif b_delta_if_stay == b_delta_if_move and b_delta_if_move > 0:
-                # print "Either option is the same" 
-                actions = [move, invite]  # Create a list of the two functions
-                shuffle(actions)  # Shuffle the list
-                if actions[0](player_b, player_a, a_delta_if_move, a_delta_if_stay):  # Try either inviting or moving. If that fails, try the other one.
-                    merged = True
-                else:
-                    merged = actions[1](player_b, player_a, a_delta_if_move, a_delta_if_stay)
+                # print "Choose a random thing"
+                actions = [move, invite]
+                merged = choice(actions)(player_b, player_a, a_delta_if_move, a_delta_if_stay)
+            else:
+                # print "Not a good deal for B"
+                merged = False
 
         return merged
 
@@ -616,13 +599,13 @@ class CollaborationModel:
         total_merges = 0
         merges_this_round = 0
         
-        # # Temporary team reporting
-        # print "-----------------------------------------------------------------------------------------------------------------------"
-        # print "Initial player allocations:"
-        # print "-----------------------------------------------------------------------------------------------------------------------"
-        # for i in self.players:
-        #     self.players[i].report()
-        # print "-----------------------------------------------------------------------------------------------------------------------\n"
+        # Temporary team reporting
+        print "-----------------------------------------------------------------------------------------------------------------------"
+        print "Initial player allocations:"
+        print "-----------------------------------------------------------------------------------------------------------------------"
+        for i in self.players:
+            self.players[i].report()
+        print "-----------------------------------------------------------------------------------------------------------------------\n"
         
         before_total = str(community.total())
 
@@ -634,7 +617,6 @@ class CollaborationModel:
             players_list = range(len(self.players))  # Build list of player indexes
             shuffle(players_list)  # ...and shuffle it
 
-            # TODO: Maybe make this team based again... too many people are maybe ending up alone...
             # Pair each index up at random... those two players then meet and run the appropriate algorithm
             for pair in pairs(players_list):
                 a = self.players[pair[0]]
@@ -669,7 +651,7 @@ class CollaborationModel:
         print "\nTotal number of team switches: {0}".format(total_merges)
         print "Total community social value before playing: " + before_total
         print "Total community social value after playing: " + str(community.total())
-        # print before_total, str(community.total())
+        print total_merges, ",", before_total, ",", str(community.total())
             
     
     def largest_matching_team(self, team1, team2, team1_player, team2_player):
