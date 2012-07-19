@@ -307,7 +307,7 @@ class Player:
         for i in objectives:
             self.objectives[i] = [objs_table[i]['name'], objs_table[i]['value']]
 
-    def currentTotal(self, test_object=None, object_is_team=True, new_team=False):
+    def currentTotal(self, test_object=None, object_is_team=True, new_team=False, objective_to_drop=None):
         """Sum the values of all objectives that match a player's assigned resource
         
         Args:
@@ -320,6 +320,12 @@ class Player:
             raise Exception("Can't use `new_team` on a team object or without a `test_object`")
 
         resources = []
+
+        if objective_to_drop:
+            objectives = dict(self.objectives)  # Make a copy of the dictionary
+            del objectives[objective_to_drop]  # Remove the objective
+        else:
+            objectives = self.objectives  # Use the full dictionary of objectives
 
         # If no object is specified, use the actual team
         if test_object is None:
