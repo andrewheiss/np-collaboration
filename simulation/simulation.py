@@ -430,7 +430,7 @@ class CollaborationModel:
         self.createTeams()
 
     def test_variation_1(self):
-        community = Community(self.players, self.teams)
+        community = Community(self.players, self.teams)  # TODO: Move this to an object attribute?
         self.players[1].joinTeam(self.teams[0])
         self.variation_1(self.players[0], self.players[2], community)
 
@@ -439,14 +439,98 @@ class CollaborationModel:
         team_a = player_a.team
         team_b = player_b.team
 
-        a_least_valuable_objective = player_a.objectives.keys()[1]
-        b_least_valuable_objective = player_b.objectives.keys()[1]
+        joint_resources_if_b_joins_a = uniquify(list(player_a.team.resources()) + list(player_b.resource))
+        joint_resources_if_a_goes_to_b = uniquify(list(player_b.team.resources()) + list(player_a.resource))
 
-        player_a.dropObjective(a_least_valuable_objective)
-        print dropped_objectives
+        a_best_if_stay = player_a.best_dropped_objective(joint_resources_if_b_joins_a)
+        a_best_if_move = player_a.best_dropped_objective(joint_resources_if_a_goes_to_b)
 
-        player_b.dropObjective(b_least_valuable_objective)
-        print dropped_objectives
+        # TODO: Make these conditional on community vs. individual welfare. Keep variable names the same.
+        if community_motivation is True:
+            pass
+        else:
+            a_delta_if_move = player_a.currentTotal(player_b.team, objective_to_drop=a_best_if_move) - player_a.currentTotal()  # A's hypothetical total on B's team after dropping an objective - A's current total
+            a_delta_if_stay = player_a.currentTotal(player_b, object_is_team=False, objective_to_drop=a_best_if_stay) - player_a.currentTotal()  # A's hypothetical total if B joins A, after dropping an objective - A's current total
+            b_delta_if_move = player_b.currentTotal(player_a.team) - player_b.currentTotal()  # B's hypothetical total on A's - B's current total
+            b_delta_if_stay = player_b.currentTotal(player_a, object_is_team=False) - player_b.currentTotal()  # B's hypothetical total if A joined B - B's current total
+
+        # # Player A's soliloquy
+        # print "\nI'm {0} and I get to collaborate with {1}.".format(player_a.name, player_b.name)
+        # print "On my current team, I have {0} points, objectives {1} and access to {2} ({3}).".format(player_a.currentTotal(), player_a.objectives, player_a.team.resources(), player_a.resource)
+        # print "If I left to join {0} with {1}, I'd have {2} points because I'd have access to {3}. I would drop objective {4}, which is {5}.".format(
+        #     player_b.team.name, 
+        #     player_b.name, 
+        #     player_a.currentTotal(player_b.team, objective_to_drop=a_best_if_move), 
+        #     joint_resources_if_a_goes_to_b, 
+        #     a_best_if_move, 
+        #     player_a.objectives[a_best_if_move])
+    
+        # print "That would be a change of {0} points".format(a_delta_if_move)
+        # print "But if {0} ({4}) came to join my team I would have {1} points because I'd have access to {2}. I would drop objective {3}.".format(
+        #     player_b.name, 
+        #     player_a.currentTotal(player_b, object_is_team=False, objective_to_drop=a_best_if_stay),
+        #     joint_resources_if_b_joins_a,
+        #     player_a.objectives[a_best_if_stay],
+        #     player_b.resource)
+        # print "And that would be a change of {0} points".format(a_delta_if_stay)
+        
+        # # # Player B's soliloquy
+        # print "\nI'm {0} and {1} wants to collaborate with me".format(player_b.name, player_a.name)
+        # print "On my current team, I have {0} points and access to {1}".format(player_b.currentTotal(), player_b.team.resources())
+        # print "If I left to join {0} with {1}, I'd have {2} points because I'd have access to {3}".format(player_a.team.name, player_a.name, player_b.currentTotal(player_a.team), player_a.team.resources())
+        # print "That would be a change of {0} points".format(b_delta_if_move)
+        # print "But if {0} came to join my team I would have {1} points".format(player_a.name, player_b.currentTotal(player_a, object_is_team=False))
+        # print "And that would be a change of {0} points".format(b_delta_if_stay)
+
+        # print "\n---------------------------\n"
+
+        # print "Change for A if A moves to B:", a_delta_if_move
+        # print "Change for A if B comes to A:", a_delta_if_stay
+        # print "Change for B if B moves to A:", b_delta_if_move
+        # print "Change for B if A comes to B:", b_delta_if_stay
+
+        # print "\n---------------------------"
+
+        # If both changes are negative, don't do anything
+        if a_delta_if_stay <= 0 and a_delta_if_move <= 0:
+            # print "All net changes are bad. Don't do anything."
+            merged = False
+
+        # If moving to B's team is better than staying, ask permission to move
+        elif a_delta_if_move >= 0 and a_delta_if_move > a_delta_if_stay:
+            merged = move(player_a, player_b, b_delta_if_move, b_delta_if_stay, a_best_if_move)
+
+        # If staying is better than moving to B's team, invite B to join
+        elif a_delta_if_stay >= 0 and a_delta_if_stay > a_delta_if_move:
+            merged = invite(player_a, player_b, b_delta_if_move, b_delta_if_stay, a_best_if_stay)
+
+        # If staying and moving give the same benefit, let B choose which one they want to do
+        elif a_delta_if_stay == a_delta_if_move and a_delta_if_move > 0:
+            # print "Either option is the same" 
+            # TODO: Figure out who drops objectives here... Player A because they're the initial requester, or Player B because they get to decide to move or join?
+            if b_delta_if_move >= 0 and b_delta_if_move > b_delta_if_stay:
+                # print "B wants to move"
+                # merged = move(player_b, player_a, a_delta_if_move, a_delta_if_stay, a_best_if_stay)
+                merged = invite(player_a, player_b, b_delta_if_move, b_delta_if_stay, a_best_if_stay)
+            elif b_delta_if_stay >= 0 and b_delta_if_stay > b_delta_if_move:
+                # print "B wants to stay"
+                # merged = invite(player_b, player_a, a_delta_if_move, a_delta_if_stay, a_best_if_move)
+                merged = move(player_a, player_b, b_delta_if_move, b_delta_if_stay, a_best_if_move)
+            elif b_delta_if_stay == b_delta_if_move and b_delta_if_move > 0:
+                # print "Choose a random thing"
+                actions = [move, invite]
+                action = choice(actions)
+
+                if action == move:
+                    merged = action(player_a, player_b, b_delta_if_move, b_delta_if_stay, a_best_if_move)
+                else:
+                    merged = action(player_a, player_b, b_delta_if_move, b_delta_if_stay, a_best_if_stay)
+                
+            else:
+                # print "Not a good deal for B. Don't do anything."
+                merged = False
+
+        return merged
 
 
     def variation_2(self, player_a, player_b, community):
@@ -455,7 +539,7 @@ class CollaborationModel:
     def test_variation_3(self):
         community = Community(self.players, self.teams)
         self.players[1].joinTeam(self.teams[0])
-        self.variation_3(self.players[0], self.players[2], community)
+        print self.variation_3(self.players[0], self.players[2], community)
 
     def variation_3(self, player_a, player_b, community):
         merged = False
@@ -655,7 +739,7 @@ class CollaborationModel:
                 b = self.players[pair[1]]
 
                 if a.team != b.team:  # If the players aren't already on the same team
-                    if self.variation_3(a, b, community) == True:
+                    if self.variation_1(a, b, community) == True:
                         merges_this_round += 1
             
             # If no merges happened this round, mark it
@@ -672,18 +756,21 @@ class CollaborationModel:
             team.report()
         print "-----------------------------------------------------------------------------------------------------------------------"
 
-        # # Temporary team reporting
-        # print "\n-----------------------------------------------------------------------------------------------------------------------"
-        # print "Final player allocations:"
-        # print "-----------------------------------------------------------------------------------------------------------------------"
-        # for i in self.players:
-        #     self.players[i].report()
-        # print "-----------------------------------------------------------------------------------------------------------------------\n"
+        # Temporary team reporting
+        print "\n-----------------------------------------------------------------------------------------------------------------------"
+        print "Final player allocations:"
+        print "-----------------------------------------------------------------------------------------------------------------------"
+        for i in self.players:
+            self.players[i].report()
+        print "-----------------------------------------------------------------------------------------------------------------------"
 
         print "\nTotal number of team switches: {0}".format(total_merges)
         print "Total community social value before playing: " + before_total
         print "Total community social value after playing: " + str(community.total())
-        print total_merges, ",", before_total, ",", str(community.total())
+        if len(dropped_objectives) > 0:
+            # print "Dropped objectives:", ', '.join('%s' % obj[0] for obj in dropped_objectives.values())
+            print "Dropped objectives:", ', '.join('{0} ({1} pts)'.format(obj[0], obj[1]) for obj in dropped_objectives.values())
+        # print total_merges, ",", before_total, ",", str(community.total())
             
     
     def largest_matching_team(self, team1, team2, team1_player, team2_player):
@@ -842,6 +929,6 @@ for _ in xrange(times_to_run_simulation):
     dropped_objectives = {}
 
     # Run the simulation
-    CollaborationModel().test_variation_1()
-    # CollaborationModel().run()
+    # CollaborationModel().test_variation_1()
+    CollaborationModel().run()
 
