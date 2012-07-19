@@ -364,7 +364,58 @@ class Player:
         # Build a comma separated list of objectives
         objectives = ', '.join('%s' % obj[0] for obj in self.objectives.values())
         
-        print "I am %s; I have resource %s; I have objectives %s; I'm on team %s; and my total value is %s."%(self.name, self.resource, objectives, self.team.name, self.currentTotal()) 
+        print "I am %s; I have resource %s; I have objectives %s; I'm on team %s; and my total value is %s."%(self.name, self.resource, objectives, self.team.name, self.currentTotal())
+
+    def best_dropped_objective(self, resource_pool):
+        good = {}
+        good_high = {}
+        good_low = {}
+
+        worthless = {}
+        worthless_high = {}
+        worthless_low = {}
+
+        # Build general good and worthless dictionaries
+        for index, details in self.objectives.items():
+            for resource in resource_pool:
+                if resource == details[0][0].upper():
+                    good[index] = details
+
+            if index not in good:
+                worthless[index] = details
+
+        # Seperate good and worthless into high and low
+        if len(good) > 0:
+            for index, details in good.items():
+                if int(details[0][1]) == 1:
+                    good_high[index] = details
+                else:
+                    good_low[index] = details
+
+        if len(worthless) > 0:
+            for index, details in worthless.items():
+                if int(details[0][1]) == 1:
+                    worthless_high[index] = details
+                else:
+                    worthless_low[index] = details
+
+        # Choose an objective to throw away, following this rule:
+        # worthless_low < worthless_high < good_low < good_high
+        # TODO: Decide if randomly choosing is better than choosing pseudo first dictionary element (dictionaries technically aren't ordered...)
+        if len(worthless_low) > 0:
+            # index_to_drop = choice(worthless_low.keys())
+            index_to_drop = worthless_low.keys()[0]
+        elif len(worthless_high.keys()) > 0:
+            # index_to_drop = choice(worthless_high.keys())
+            index_to_drop = worthless_high.keys()[0]
+        elif len(good_low.keys()) > 0:
+            # index_to_drop = choice(good_low.keys())
+            index_to_drop = good_low.keys()[0]
+        elif len(good_high.keys()) > 0:
+            # index_to_drop = choice(good_high.keys())
+            index_to_drop = good_high.keys()[0]
+
+        return index_to_drop
 
 
 class CollaborationModel:
