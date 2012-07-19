@@ -502,47 +502,6 @@ class CollaborationModel:
 
         # print "\n---------------------------"
 
-        #---------------------
-        # Decision algorithm
-        #---------------------
-        def invite(inviter, invitee, delta_if_move, delta_if_stay):
-            # print "{0} inviting {1}".format(inviter.name, invitee.name)
-            if delta_if_move >= 0 and delta_if_move > delta_if_stay:
-                # print "This is the ideal situation; {0} will gain {1} points and {2} will gain {3}. Permission granted.".format(inviter.name, delta_if_stay, invitee.name, delta_if_move)
-                invitee.joinTeam(invitee.team)
-                return True
-            elif delta_if_stay >= 0 and delta_if_stay > delta_if_move:
-                # print "It's better if the invitee stays... "
-                invitee.joinTeam(invitee.team)
-                return True
-                # return False
-            elif delta_if_move == delta_if_stay and delta_if_move > 0:
-                # print "It doesn't matter to the invitee. Permission granted."
-                invitee.joinTeam(invitee.team)
-                return True
-            else:
-                # print "Permission denied"
-                return False
-
-        def move(asker, asked, delta_if_move, delta_if_stay):
-            # print "{0} trying to join {1}".format(asker.name, asked.name)
-            if delta_if_stay > 0 and delta_if_stay > delta_if_move:
-                # print "This is the ideal situation; {0} will gain {1} points and {2} will gain {3}. Permission granted.".format(asker.name, a_delta_if_move, asked.name, delta_if_stay)
-                asker.joinTeam(asked.team)
-                return True
-            elif delta_if_move > 0 and delta_if_move > delta_if_stay:
-                # print "It's better if the asked moves... "
-                asker.joinTeam(asked.team)
-                return True
-                # return False
-            elif delta_if_stay == delta_if_move and delta_if_stay > 0:
-                # print "It doesn't matter to the asked. Permission granted."
-                asker.joinTeam(asked.team)
-                return True
-            else:
-                # print "Permission denied"
-                return False
-
         # If both changes are negative, don't do anything
         if a_delta_if_stay <= 0 and a_delta_if_move <= 0:
             # print "All net changes are bad. Don't do anything."
@@ -779,6 +738,54 @@ class CollaborationModel:
                 stop += num_objs_per_player
         
         self.players = players
+
+
+# Globalish invitation and moving algorithms
+def invite(inviter, invitee, delta_if_move, delta_if_stay, objective_to_drop=None):
+    # print "{0} inviting {1}".format(inviter.name, invitee.name)
+    if delta_if_move >= 0 and delta_if_move > delta_if_stay:
+        # print "This is the ideal situation. Permission granted."
+        invitee.joinTeam(invitee.team)
+        if objective_to_drop:
+            inviter.dropObjective(objective_to_drop)
+        return True
+    elif delta_if_stay >= 0 and delta_if_stay > delta_if_move:
+        # print "It's better if the invitee stays... "
+        # invitee.joinTeam(invitee.team)
+        # return True
+        return False
+    elif delta_if_move == delta_if_stay and delta_if_move > 0:
+        # print "It doesn't matter to the invitee. Permission granted."
+        invitee.joinTeam(invitee.team)
+        if objective_to_drop:
+            inviter.dropObjective(objective_to_drop)
+        return True
+    else:
+        # print "Permission denied"
+        return False
+
+def move(asker, asked, delta_if_move, delta_if_stay, objective_to_drop=None):
+    # print "{0} trying to join {1}".format(asker.name, asked.name)
+    if delta_if_stay > 0 and delta_if_stay > delta_if_move:
+        # print "This is the ideal situation. Permission granted."
+        asker.joinTeam(asked.team)
+        if objective_to_drop:
+            asker.dropObjective(objective_to_drop)
+        return True
+    elif delta_if_move > 0 and delta_if_move > delta_if_stay:
+        # print "It's better if the asked moves... "
+        # asker.joinTeam(asked.team)
+        # return True
+        return False
+    elif delta_if_stay == delta_if_move and delta_if_stay > 0:
+        # print "It doesn't matter to the asked. Permission granted."
+        asker.joinTeam(asked.team)
+        if objective_to_drop:
+            asker.dropObjective(objective_to_drop)
+        return True
+    else:
+        # print "Permission denied"
+        return False
 
 
 # Important mini functions
