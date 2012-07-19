@@ -221,7 +221,7 @@ class Team:
     def __init__(self, index):
         """Creates a new team object
         
-        Creates a new team ### consisting of exactly one player
+        Creates a new team consisting of exactly one player
         
         Args:
             name: The player's name
@@ -346,10 +346,9 @@ class Player:
                     total += details[1]
         return total
     
-    def dropObjective(self):
-        """docstring for dropObjective"""
-        # TODO: Drop objectives
-        pass
+    def dropObjective(self, objective_to_drop):
+        """Drop an objective, moving it to the global `dropped_objectives` dictionary of lists"""
+        dropped_objectives[objective_to_drop] = self.objectives.pop(objective_to_drop)
     
     def joinTeam(self, team):
         """Add a player to a team... eventually only after checking to see if the alliance is beneficial and after dropping an objective"""
@@ -373,10 +372,27 @@ class CollaborationModel:
         self.build()
         self.createTeams()
 
-    def variation_1(self, team_a, team_b, player_a, player_b):
-        pass
+    def test_variation_1(self):
+        community = Community(self.players, self.teams)
+        self.players[1].joinTeam(self.teams[0])
+        self.variation_1(self.players[0], self.players[2], community)
 
-    def variation_2(self, team_a, team_b, player_a, player_b):
+    def variation_1(self, player_a, player_b, community):
+        merged = False
+        team_a = player_a.team
+        team_b = player_b.team
+
+        a_least_valuable_objective = player_a.objectives.keys()[1]
+        b_least_valuable_objective = player_b.objectives.keys()[1]
+
+        player_a.dropObjective(a_least_valuable_objective)
+        print dropped_objectives
+
+        player_b.dropObjective(b_least_valuable_objective)
+        print dropped_objectives
+
+
+    def variation_2(self, player_a, player_b, community):
         pass
 
     def test_variation_3(self):
@@ -759,8 +775,9 @@ for _ in xrange(times_to_run_simulation):
     resource_pool = ResourcePool(num_resources, num_players)
     objective_pool = ObjectivePool(resource_pool)
     objs_table = objective_pool.table
+    dropped_objectives = {}
 
     # Run the simulation
-    # CollaborationModel().test_variation_3()
-    CollaborationModel().run()
+    CollaborationModel().test_variation_1()
+    # CollaborationModel().run()
 
