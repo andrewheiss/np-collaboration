@@ -428,13 +428,13 @@ class CollaborationModel:
     def __init__(self):
         self.build()
         self.createTeams()
+        self.community = Community(self.players, self.teams)
 
     def test_variation_1(self):
-        community = Community(self.players, self.teams)  # TODO: Move this to an object attribute?
         self.players[1].joinTeam(self.teams[0])
-        self.variation_1(self.players[0], self.players[2], community)
+        self.variation_1(self.players[0], self.players[2])
 
-    def variation_1(self, player_a, player_b, community):
+    def variation_1(self, player_a, player_b):
         merged = False
         team_a = player_a.team
         team_b = player_b.team
@@ -533,15 +533,18 @@ class CollaborationModel:
         return merged
 
 
-    def variation_2(self, player_a, player_b, community):
-        pass
+    def test_variation_2(self):
+        self.players[1].joinTeam(self.teams[0])
+        self.variation_2(self.players[0], self.players[2])
+
+    def variation_2(self, player_a, player_b):
+        print player_a.name
 
     def test_variation_3(self):
-        community = Community(self.players, self.teams)
         self.players[1].joinTeam(self.teams[0])
-        print self.variation_3(self.players[0], self.players[2], community)
+        print self.variation_3(self.players[0], self.players[2])
 
-    def variation_3(self, player_a, player_b, community):
+    def variation_3(self, player_a, player_b):
         merged = False
         team_a = player_a.team
         team_b = player_b.team
@@ -620,12 +623,11 @@ class CollaborationModel:
         return merged
 
     def test_variation_4(self):
-        community = Community(self.players, self.teams)
         # self.players[1].joinTeam(self.teams[0])
         self.players[5].joinTeam(self.teams[2])
-        self.variation_4(self.players[0], self.players[2], community)
+        self.variation_4(self.players[0], self.players[2])
 
-    def variation_4(self, player_a, player_b, community):
+    def variation_4(self, player_a, player_b):
         merge_occurred = False
         team_a = player_a.team
         team_b = player_b.team
@@ -678,7 +680,7 @@ class CollaborationModel:
 
         if merge_occurred:
             # print "Yay! Something good happened!"
-            newTeam = Team(community.last_team_index() + 1)
+            newTeam = Team(self.community.last_team_index() + 1)
             self.teams.append(newTeam)
             player_a.joinTeam(newTeam)
             player_b.joinTeam(newTeam)
@@ -688,29 +690,7 @@ class CollaborationModel:
             return False
 
 
-    def test(self):
-        community = Community(self.players, self.teams)
-
-        self.players[1].joinTeam(self.teams[0])
-        new_team = Team(community.last_team_index() + 1)
-        self.teams.append(new_team)
-
-        self.players[4].joinTeam(self.teams[16])
-
-        print community.activeTeams()
-        print community.last_team_index()
-        players_list = range(len(self.players))
-        shuffle(players_list)
-
-        for pair in pairs(players_list):
-            a = self.players[pair[0]]
-            b = self.players[pair[1]]
-            print a.name, b.name
-            # if self.variation_3(a, b) == True:
-            #     merges += 1
-
     def run(self):
-        community = Community(self.players, self.teams)
         rounds_without_merges = 0
         total_merges = 0
         merges_this_round = 0
@@ -723,7 +703,7 @@ class CollaborationModel:
             self.players[i].report()
         print "-----------------------------------------------------------------------------------------------------------------------\n"
         
-        before_total = str(community.total())
+        before_total = str(self.community.total())
 
         while True:
             # Track how many team merges happen
@@ -739,7 +719,7 @@ class CollaborationModel:
                 b = self.players[pair[1]]
 
                 if a.team != b.team:  # If the players aren't already on the same team
-                    if self.variation_1(a, b, community) == True:
+                    if self.variation_4(a, b) == True:
                         merges_this_round += 1
             
             # If no merges happened this round, mark it
@@ -766,11 +746,11 @@ class CollaborationModel:
 
         print "\nTotal number of team switches: {0}".format(total_merges)
         print "Total community social value before playing: " + before_total
-        print "Total community social value after playing: " + str(community.total())
+        print "Total community social value after playing: " + str(self.community.total())
         if len(dropped_objectives) > 0:
             # print "Dropped objectives:", ', '.join('%s' % obj[0] for obj in dropped_objectives.values())
             print "Dropped objectives:", ', '.join('{0} ({1} pts)'.format(obj[0], obj[1]) for obj in dropped_objectives.values())
-        # print total_merges, ",", before_total, ",", str(community.total())
+        # print total_merges, ",", before_total, ",", str(self.community.total())
             
     
     def largest_matching_team(self, team1, team2, team1_player, team2_player):
@@ -929,6 +909,6 @@ for _ in xrange(times_to_run_simulation):
     dropped_objectives = {}
 
     # Run the simulation
-    # CollaborationModel().test_variation_1()
+    # CollaborationModel().test_variation_4()
     CollaborationModel().run()
 
