@@ -27,7 +27,7 @@ value_low = 10
 approximate_high_low_resource_ratio = 3
 approximate_high_low_objective_ratio = 3
 faux_pareto_rounds_without_merges = 500
-variation = 0
+variation = 4  # Must be 1, 2, 3, or 4
 community_motivation = False  # Set to True to have everyone work for community value instead of personal value
 times_to_run_simulation = 1
 # seed(4567890)
@@ -564,7 +564,7 @@ class CollaborationModel:
         self.players[1].joinTeam(self.teams[0])
         self.variation_2(self.players[0], self.players[2])
 
-    def variation_2(self, player_a, player_b):
+    def variation_2(self, player_a, player_b):  # TODO: This is messed up
         merged = False
         team_a = player_a.team
         team_b = player_b.team
@@ -572,8 +572,10 @@ class CollaborationModel:
         joint_resources_if_b_joins_a = uniquify(list(player_a.team.resources()) + list(player_b.resource))
         joint_resources_if_a_goes_to_b = uniquify(list(player_b.team.resources()) + list(player_a.resource))
 
-        a_best_if_stay = player_a.best_given_objective(joint_resources_if_b_joins_a, player_b)
-        a_best_if_move = player_a.best_given_objective(joint_resources_if_a_goes_to_b, player_b)
+        # a_best_if_stay = player_a.best_given_objective(joint_resources_if_b_joins_a, player_b)
+        # a_best_if_move = player_a.best_given_objective(joint_resources_if_a_goes_to_b, player_b)
+        a_best_if_stay = player_a.best_given_objective(joint_resources_if_b_joins_a, give_away=False)
+        a_best_if_move = player_a.best_given_objective(joint_resources_if_a_goes_to_b, give_away=False)
 
         # TODO: Make these conditional on community vs. individual welfare. Keep variable names the same.
         if community_motivation is True:
@@ -767,7 +769,7 @@ class CollaborationModel:
         self.players[5].joinTeam(self.teams[2])
         self.variation_4(self.players[0], self.players[2])
 
-    def variation_4(self, player_a, player_b):
+    def variation_4(self, player_a, player_b):  # TODO: This is broken...
         merge_occurred = False
         team_a = player_a.team
         team_b = player_b.team
@@ -834,6 +836,7 @@ class CollaborationModel:
         rounds_without_merges = 0
         total_merges = 0
         merges_this_round = 0
+        variation_name = "variation_" + str(variation)  # Name of variation function to run
         
         # Temporary team reporting
         print "-----------------------------------------------------------------------------------------------------------------------"
@@ -859,7 +862,8 @@ class CollaborationModel:
                 b = self.players[pair[1]]
 
                 if a.team != b.team:  # If the players aren't already on the same team
-                    if self.variation_2(a, b) == True:
+                    if getattr(CollaborationModel(), variation_name)(a, b) == True:  # Run the variation specified at the top of the script
+                    # if self.variation_2(a, b) == True:
                         merges_this_round += 1
             
             # If no merges happened this round, mark it
