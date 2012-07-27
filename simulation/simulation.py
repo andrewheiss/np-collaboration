@@ -831,76 +831,110 @@ class CollaborationModel:
         team_a = player_a.team
         team_b = player_b.team
 
-        # a_delta_if_move = 20
-        # a_delta_if_stay = 50
-        # b_delta_if_move = 10
-        # b_delta_if_stay = 40
+        a_total_if_move = player_a.currentTotal(player_b.team)
+        a_total_if_stay = player_a.currentTotal(player_b, object_is_team=False)
+        b_total_if_move = player_b.currentTotal(player_a.team)
+        b_total_if_stay = player_b.currentTotal(player_a, object_is_team=False)
+
+        a_delta_if_move = a_total_if_move - player_a.currentTotal()  # A's hypothetical total on B's team - A's current total
+        a_delta_if_stay = a_total_if_stay - player_a.currentTotal()  # A's hypothetical total if B joins A - A's current total
+        b_delta_if_move = b_total_if_move - player_b.currentTotal()  # B's hypothetical total on A's - B's current total
+        b_delta_if_stay = b_total_if_stay - player_b.currentTotal()  # B's hypothetical total if A joined B - B's current total
 
         # TODO: Make these conditional on community vs. individual welfare. Keep variable names the same.
         if community_motivation is True:
-            pass
-        else:
-            a_delta_if_move = player_a.currentTotal(player_b.team) - player_a.currentTotal()  # A's hypothetical total on B's team - A's current total
-            a_delta_if_stay = player_a.currentTotal(player_b, object_is_team=False) - player_a.currentTotal()  # A's hypothetical total if B joins A - A's current total
-            b_delta_if_move = player_b.currentTotal(player_a.team) - player_b.currentTotal()  # B's hypothetical total on A's - B's current total
-            b_delta_if_stay = player_b.currentTotal(player_a, object_is_team=False) - player_b.currentTotal()  # B's hypothetical total if A joined B - B's current total
+            community_before = self.community.total()
 
-        # # Player A's soliloquy
-        # print "\nI'm {0} and I get to collaborate with {1}.".format(player_a.name, player_b.name)
-        # print "On my current team, I have {0} points and access to {1}".format(player_a.currentTotal(), player_a.team.resources())
-        # print "If I left to join {0} with {1}, I'd have {2} points because I'd have access to {3}".format(player_b.team.name, player_b.name, player_a.currentTotal(player_b.team), player_b.team.resources())
-    
-        # print "That would be a change of {0} points".format(a_delta_if_move)
-        # print "But if {0} came to join my team I would have {1} points".format(player_b.name, player_a.currentTotal(player_b, object_is_team=False))
-        # print "And that would be a change of {0} points".format(a_delta_if_stay)
-        
-        # # Player B's soliloquy
-        # print "\nI'm {0} and {1} wants to collaborate with me".format(player_b.name, player_a.name)
-        # print "On my current team, I have {0} points and access to {1}".format(player_b.currentTotal(), player_b.team.resources())
-        # print "If I left to join {0} with {1}, I'd have {2} points because I'd have access to {3}".format(player_a.team.name, player_a.name, player_b.currentTotal(player_a.team), player_a.team.resources())
-        # print "That would be a change of {0} points".format(b_delta_if_move)
-        # print "But if {0} came to join my team I would have {1} points".format(player_a.name, player_b.currentTotal(player_a, object_is_team=False))
-        # print "And that would be a change of {0} points".format(b_delta_if_stay)
+            # Calculate deltas for all members of the team
+            a_other_deltas = 0
+            b_other_deltas = 0
+            for player in [ p for p in team_a.players if p != player_a ]: # Iterate through all of the players on team A--exlcuding player A--to check their deltas
+                player_delta = player.currentTotal(player_b, object_is_team=False) - player.currentTotal()
+                a_other_deltas += player_delta
 
-        # print "\n---------------------------\n"
+            for player in [ p for p in team_b.players if p != player_b ]: 
+                player_delta = player.currentTotal(player_b, object_is_team=False) - player.currentTotal()
+                b_other_deltas += player_delta
 
-        # print "Change for A if A moves to B:", a_delta_if_move
-        # print "Change for A if B comes to A:", a_delta_if_stay
-        # print "Change for B if B moves to A:", b_delta_if_move
-        # print "Change for B if A comes to B:", b_delta_if_stay
+            community_total_a_to_b = community_before + a_delta_if_move + b_delta_if_stay + b_other_deltas
+            community_total_b_to_a = community_before + a_delta_if_stay + b_delta_if_move + a_other_deltas
 
-        # print "\n---------------------------"
+            community_delta_a_to_b = community_total_a_to_b - community_before
+            community_delta_b_to_a = community_total_b_to_a - community_before
 
-        # If both changes are negative, don't do anything
-        if a_delta_if_stay <= 0 and a_delta_if_move <= 0:
-            # print "All net changes are bad. Don't do anything."
-            merged = False
-
-        # If moving to B's team is better than staying, ask permission to move
-        elif a_delta_if_move >= 0 and a_delta_if_move > a_delta_if_stay:
-            merged = move(player_a, player_b, b_delta_if_move, b_delta_if_stay)
-
-        # If staying is better than moving to B's team, invite B to join
-        elif a_delta_if_stay >= 0 and a_delta_if_stay > a_delta_if_move:
-            merged = invite(player_a, player_b, b_delta_if_move, b_delta_if_stay)
-
-        # If staying and moving give the same benefit, let B choose which one they want to do
-        elif a_delta_if_stay == a_delta_if_move and a_delta_if_move > 0:
-            # print "Either option is the same" 
-
-            if b_delta_if_move >= 0 and b_delta_if_move > b_delta_if_stay:
-                # print "Try to move to A"
-                merged = move(player_b, player_a, a_delta_if_move, a_delta_if_stay)
-            elif b_delta_if_stay >= 0 and b_delta_if_stay > b_delta_if_move:
-                # print "Invite A to join B"
-                merged = invite(player_b, player_a, a_delta_if_move, a_delta_if_stay)
-            elif b_delta_if_stay == b_delta_if_move and b_delta_if_move > 0:
-                # print "Choose a random thing"
-                actions = [move, invite]
-                merged = choice(actions)(player_b, player_a, a_delta_if_move, a_delta_if_stay)
+            if community_delta_a_to_b > 0 and community_delta_a_to_b > community_delta_b_to_a:
+                # print "A should move to B"
+                player_a.joinTeam(team_b)
+                merged = True
+            elif community_delta_b_to_a > 0 and community_delta_b_to_a > community_delta_a_to_b:
+                # print "B should move to A"
+                player_b.joinTeam(team_a)
+                merged = True
+            elif community_delta_a_to_b > 0 and community_delta_a_to_b == community_delta_b_to_a:
+                # print "Choose one..."
+                player_b.joinTeam(team_a)  # TODO: Randomly choose to leave or stay
+                merged = True
             else:
-                # print "Not a good deal for B"
+                # print "Don't do anything"
                 merged = False
+
+        else: # If community_motivation is false...
+            # # Player A's soliloquy
+            # print "\nI'm {0} and I get to collaborate with {1}.".format(player_a.name, player_b.name)
+            # print "On my current team, I have {0} points and access to {1}".format(player_a.currentTotal(), player_a.team.resources())
+            # print "If I left to join {0} with {1}, I'd have {2} points because I'd have access to {3}".format(player_b.team.name, player_b.name, player_a.currentTotal(player_b.team), player_b.team.resources())
+        
+            # print "That would be a change of {0} points".format(a_delta_if_move)
+            # print "But if {0} came to join my team I would have {1} points".format(player_b.name, player_a.currentTotal(player_b, object_is_team=False))
+            # print "And that would be a change of {0} points".format(a_delta_if_stay)
+            
+            # # Player B's soliloquy
+            # print "\nI'm {0} and {1} wants to collaborate with me".format(player_b.name, player_a.name)
+            # print "On my current team, I have {0} points and access to {1}".format(player_b.currentTotal(), player_b.team.resources())
+            # print "If I left to join {0} with {1}, I'd have {2} points because I'd have access to {3}".format(player_a.team.name, player_a.name, player_b.currentTotal(player_a.team), player_a.team.resources())
+            # print "That would be a change of {0} points".format(b_delta_if_move)
+            # print "But if {0} came to join my team I would have {1} points".format(player_a.name, player_b.currentTotal(player_a, object_is_team=False))
+            # print "And that would be a change of {0} points".format(b_delta_if_stay)
+
+            # print "\n---------------------------\n"
+
+            # print "Change for A if A moves to B:", a_delta_if_move
+            # print "Change for A if B comes to A:", a_delta_if_stay
+            # print "Change for B if B moves to A:", b_delta_if_move
+            # print "Change for B if A comes to B:", b_delta_if_stay
+
+            # print "\n---------------------------"
+
+            # If both changes are negative, don't do anything
+            if a_delta_if_stay <= 0 and a_delta_if_move <= 0:
+                # print "All net changes are bad. Don't do anything."
+                merged = False
+
+            # If moving to B's team is better than staying, ask permission to move
+            elif a_delta_if_move >= 0 and a_delta_if_move > a_delta_if_stay:
+                merged = move(player_a, player_b, b_delta_if_move, b_delta_if_stay)
+
+            # If staying is better than moving to B's team, invite B to join
+            elif a_delta_if_stay >= 0 and a_delta_if_stay > a_delta_if_move:
+                merged = invite(player_a, player_b, b_delta_if_move, b_delta_if_stay)
+
+            # If staying and moving give the same benefit, let B choose which one they want to do
+            elif a_delta_if_stay == a_delta_if_move and a_delta_if_move > 0:
+                # print "Either option is the same" 
+
+                if b_delta_if_move >= 0 and b_delta_if_move > b_delta_if_stay:
+                    # print "Try to move to A"
+                    merged = move(player_b, player_a, a_delta_if_move, a_delta_if_stay)
+                elif b_delta_if_stay >= 0 and b_delta_if_stay > b_delta_if_move:
+                    # print "Invite A to join B"
+                    merged = invite(player_b, player_a, a_delta_if_move, a_delta_if_stay)
+                elif b_delta_if_stay == b_delta_if_move and b_delta_if_move > 0:
+                    # print "Choose a random thing"
+                    actions = [move, invite]
+                    merged = choice(actions)(player_b, player_a, a_delta_if_move, a_delta_if_stay)
+                else:
+                    # print "Not a good deal for B"
+                    merged = False
 
         return merged
 
