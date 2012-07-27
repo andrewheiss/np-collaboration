@@ -441,8 +441,80 @@ class CollaborationModel:
             1: self.variation_1,
             2: self.variation_2,
             3: self.variation_3,
-            4: self.variation_4
+            4: self.variation_4,
+            5: self.variation_5
         }
+
+    def variation_5(self, player_a, player_b):
+        merged = False
+        team_a = player_a.team
+        team_b = player_b.team
+
+        community_before = self.community.total()
+
+        joint_resources_if_b_joins_a = uniquify(list(player_a.team.resources()) + list(player_b.resource))
+        joint_resources_if_a_goes_to_b = uniquify(list(player_b.team.resources()) + list(player_a.resource))
+
+        a_best_if_stay = player_a.best_given_objective(joint_resources_if_b_joins_a)
+        a_best_if_move = player_a.best_given_objective(joint_resources_if_a_goes_to_b)
+
+        a_total_if_move = player_a.currentTotal(player_b.team, objective_to_drop=a_best_if_move)
+        a_total_if_stay = player_a.currentTotal(player_b, object_is_team=False, objective_to_drop=a_best_if_stay)
+        b_total_if_move = player_b.currentTotal(player_a.team)
+        b_total_if_stay = player_b.currentTotal(player_a, object_is_team=False)
+
+        a_delta_if_move = a_total_if_move - player_a.currentTotal()  # A's hypothetical total on B's team after dropping an objective - A's current total
+        a_delta_if_stay = a_total_if_stay - player_a.currentTotal()  # A's hypothetical total if B joins A, after dropping an objective - A's current total
+        b_delta_if_move = b_total_if_move - player_b.currentTotal()  # B's hypothetical total on A's - B's current total
+        b_delta_if_stay = b_total_if_stay - player_b.currentTotal()  # B's hypothetical total if A joined B - B's current total
+
+        a_other_deltas = 0
+        b_other_deltas = 0
+        for player in [ p for p in team_a.players if p != player_a ]: # Iterate through all of the players on team A--exlcuding player A--to check their deltas
+            player_delta = player.currentTotal(player_b, object_is_team=False) - player.currentTotal()
+            a_other_deltas += player_delta
+            # print player.name, player_delta 
+
+        for player in [ p for p in team_b.players if p != player_b ]: # Iterate through all of the players on team A--exlcuding player A--to check their deltas
+            player_delta = player.currentTotal(player_b, object_is_team=False) - player.currentTotal()
+            b_other_deltas += player_delta
+            # print player.name, player_delta 
+
+        # print "Current community total:", community_before
+
+        community_total_a_to_b = community_before + a_delta_if_move + b_delta_if_stay + b_other_deltas
+        community_total_b_to_a = community_before + a_delta_if_stay + b_delta_if_move + a_other_deltas
+
+        # print "Community total if A moves and B stays:", community_total_a_to_b
+        # print "Community total if A stays and B moves:", community_total_b_to_a
+
+        community_delta_a_to_b = community_total_a_to_b - community_before
+        community_delta_b_to_a = community_total_b_to_a - community_before
+
+        # print "Change if A moves to B:", community_delta_a_to_b
+        # print "Change if B moves to A:", community_delta_b_to_a, "\n"
+
+        if community_delta_a_to_b > 0 and community_delta_a_to_b > community_delta_b_to_a:
+            # print "A should move to B"
+            player_a.joinTeam(team_b)
+            player_a.dropObjective(a_best_if_move)
+            merged = True
+        elif community_delta_b_to_a > 0 and community_delta_b_to_a > community_delta_a_to_b:
+            # print "B should move to A"
+            player_b.joinTeam(team_a)
+            player_a.dropObjective(a_best_if_stay)
+            merged = True
+        elif community_delta_a_to_b > 0 and community_delta_a_to_b == community_delta_b_to_a:
+            # print "Choose one..."
+            player_b.joinTeam(team_a)
+            player_a.dropObjective(a_best_if_stay)
+            merged = True
+        else:
+            # print "Don't do anything"
+            merged = False
+
+        return merged
+
 
     def variation_1(self, player_a, player_b):
         merged = False
