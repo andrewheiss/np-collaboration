@@ -1152,24 +1152,22 @@ def invite(inviter, invitee, delta_if_move, delta_if_stay, objective_to_drop=Non
     # print "{0} inviting {1}".format(inviter.name, invitee.name)
     if delta_if_move >= 0 and delta_if_move > delta_if_stay:
         # print "This is the ideal situation. Permission granted."
-        invitee.joinTeam(invitee.team)
         if objective_to_drop:
             inviter.dropObjective(objective_to_drop)
         if objective_to_give:
             inviter.giveObjective(objective_to_give, invitee)
+        invitee.joinTeam(invitee.team)
         return True
     elif delta_if_stay >= 0 and delta_if_stay > delta_if_move:
         # print "It's better if the invitee stays... " 
-        # invitee.joinTeam(invitee.team)
-        # return True
         return False
     elif delta_if_move == delta_if_stay and delta_if_move > 0:
         # print "It doesn't matter to the invitee. Permission granted."
-        invitee.joinTeam(invitee.team)
         if objective_to_drop:
             inviter.dropObjective(objective_to_drop)
         if objective_to_give:
             inviter.giveObjective(objective_to_give, invitee)
+        invitee.joinTeam(invitee.team)
         return True
     else:
         # print "Permission denied"
@@ -1182,24 +1180,22 @@ def move(asker, asked, delta_if_move, delta_if_stay, objective_to_drop=None, obj
     # print "{0} trying to join {1}".format(asker.name, asked.name)
     if delta_if_stay > 0 and delta_if_stay > delta_if_move:
         # print "This is the ideal situation. Permission granted."
-        asker.joinTeam(asked.team)
         if objective_to_drop:
             asker.dropObjective(objective_to_drop)
         if objective_to_give:
             asker.giveObjective(objective_to_give, asked)
+        asker.joinTeam(asked.team)
         return True
     elif delta_if_move > 0 and delta_if_move > delta_if_stay:
         # print "It's better if the asked moves... "
-        # asker.joinTeam(asked.team)
-        # return True
         return False
     elif delta_if_stay == delta_if_move and delta_if_stay > 0:
         # print "It doesn't matter to the asked. Permission granted."
-        asker.joinTeam(asked.team)
         if objective_to_drop:
             asker.dropObjective(objective_to_drop)
         if objective_to_give:
             asker.giveObjective(objective_to_give, asked)
+        asker.joinTeam(asked.team)
         return True
     else:
         # print "Permission denied"
