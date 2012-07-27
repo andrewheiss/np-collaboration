@@ -537,7 +537,7 @@ class CollaborationModel:
         b_delta_if_move = b_total_if_move - player_b.currentTotal()  # B's hypothetical total on A's - B's current total
         b_delta_if_stay = b_total_if_stay - player_b.currentTotal()  # B's hypothetical total if A joined B - B's current total
 
-        if community_motivation is True:
+        if community_motivation is True:  # TODO: This function is fine, but it's totally reusable. Make this more DRY-ish for the other variations.
             community_before = self.community.total()
 
             # Calculate deltas for all members of the team
@@ -568,7 +568,7 @@ class CollaborationModel:
                 player_a.dropObjective(a_best_if_stay)
                 merged = True
             elif community_delta_a_to_b > 0 and community_delta_a_to_b == community_delta_b_to_a:
-                # print "Choose one..."
+                # print "Choose one..."  # TODO: Actually choose one of these randomly
                 player_b.joinTeam(team_a)
                 player_a.dropObjective(a_best_if_stay)
                 merged = True
@@ -1258,4 +1258,24 @@ for _ in xrange(times_to_run_simulation):
     # Run the simulation
     # CollaborationModel().test_run()
     CollaborationModel().run()
+
+    # TODO: Export these things to CSV:
+
+    # 1. Data on pre vs. post values (mean and median) for players and
+    # society, including both totals and averages for the personal and
+    # social value values
+
+    # 2. Difference between the maximum total possible values and the values
+    # actually achieved
+
+    # 3. Number of encounters, number of switches, and a ratio of switches to bumps
+
+    # 4. All kinds of data about the objectives and resources
+    # themselves--team sizes, level of fulfillment (points realized), points
+    # unrealized
+
+    # 5. Number of teams, sizes of teams
+
+    # MAYBE: Export a text-based version of a single run
+    # MAYBE: Use RPy to build fancy ggplot graphs automatically
 
