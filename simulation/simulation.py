@@ -537,7 +537,6 @@ class CollaborationModel:
         b_delta_if_move = b_total_if_move - player_b.currentTotal()  # B's hypothetical total on A's - B's current total
         b_delta_if_stay = b_total_if_stay - player_b.currentTotal()  # B's hypothetical total if A joined B - B's current total
 
-        # TODO: Make these conditional on community vs. individual welfare. Keep variable names the same.
         if community_motivation is True:
             community_before = self.community.total()
 
@@ -577,17 +576,7 @@ class CollaborationModel:
                 # print "Don't do anything"
                 merged = False
 
-        else:  # If community_motivation is false
-            a_total_if_move = player_a.currentTotal(player_b.team, objective_to_drop=a_best_if_move)
-            a_total_if_stay = player_a.currentTotal(player_b, object_is_team=False, objective_to_drop=a_best_if_stay)
-            b_total_if_move = player_b.currentTotal(player_a.team)
-            b_total_if_stay = player_b.currentTotal(player_a, object_is_team=False)
-
-            a_delta_if_move = a_total_if_move - player_a.currentTotal()  # A's hypothetical total on B's team after dropping an objective - A's current total
-            a_delta_if_stay = a_total_if_stay - player_a.currentTotal()  # A's hypothetical total if B joins A, after dropping an objective - A's current total
-            b_delta_if_move = b_total_if_move - player_b.currentTotal()  # B's hypothetical total on A's - B's current total
-            b_delta_if_stay = b_total_if_stay - player_b.currentTotal()  # B's hypothetical total if A joined B - B's current total
-
+        else:  # If community_motivation is false...
             # # Player A's soliloquy
             # print "\nI'm {0} and I get to collaborate with {1}.".format(player_a.name, player_b.name)
             # print "On my current team, I have {0} points, objectives {1} and access to {2} ({3}).".format(player_a.currentTotal(), player_a.objectives, player_a.team.resources(), player_a.resource)
