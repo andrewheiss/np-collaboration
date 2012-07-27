@@ -873,10 +873,21 @@ class CollaborationModel:
 
 
     def test_run(self):
-        print "Running variation {0}".format(variation)
+        print "Running variation {0}, with a {1} focus".format(variation, "community" if community_motivation else "self-interested")
         self.players[1].joinTeam(self.teams[0])
         # self.players[5].joinTeam(self.teams[2])
+        # for i in self.players:
+        #     self.players[i].report()
+
         self.variations[variation](self.players[0], self.players[2])
+
+        # for team in self.teams:
+        #     team.report()
+
+        # for i in self.players:
+        #     self.players[i].report()
+
+        print self.community.total()
 
 
     def run(self):
@@ -1119,6 +1130,6 @@ for _ in xrange(times_to_run_simulation):
     dropped_objectives = {}
 
     # Run the simulation
-    CollaborationModel().test_run()
-    # CollaborationModel().run()
+    # CollaborationModel().test_run()
+    CollaborationModel().run()
 
