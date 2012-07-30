@@ -27,9 +27,9 @@ value_low = 10
 approximate_high_low_resource_ratio = 3
 approximate_high_low_objective_ratio = 3
 faux_pareto_rounds_without_merges = 25
-variation = 3  # Must be 1, 2, 3, or 4
-community_motivation = False  # Set to True to have everyone work for community value instead of personal value
-times_to_run_simulation = 1
+variation = 4  # Must be 1, 2, 3, or 4
+community_motivation = True  # Set to True to have everyone work for community value instead of personal value
+times_to_run_simulation = 100
 # seed(4567890)
 
 # Turn on random allocation
@@ -470,7 +470,7 @@ class CollaborationModel:
         b_delta_if_move = b_total_if_move - player_b.currentTotal()  # B's hypothetical total on A's - B's current total
         b_delta_if_stay = b_total_if_stay - player_b.currentTotal()  # B's hypothetical total if A joined B - B's current total
 
-        if community_motivation is True:  # TODO: This function is fine, but it's totally reusable. Make this more DRY-ish for the other variations.
+        if community_motivation is True:  # MAYBE: This function is fine, but it's totally reusable. Make this more DRY-ish for the other variations.
             community_before = self.community.total()
 
             # Calculate deltas for all members of the team
@@ -567,7 +567,7 @@ class CollaborationModel:
             # If staying and moving give the same benefit, let B choose which one they want to do
             elif a_delta_if_stay == a_delta_if_move and a_delta_if_move > 0:
                 # print "Either option is the same" 
-                # TODO: Figure out who drops objectives here... Player A because they're the initial requester, or Player B because they get to decide to move or join?
+                # Player A drops an objective because they are the initial requester
                 if b_delta_if_move >= 0 and b_delta_if_move > b_delta_if_stay:
                     # print "B wants to move"
                     # merged = move(player_b, player_a, a_delta_if_move, a_delta_if_stay, objective_to_drop=a_best_if_stay)
@@ -740,7 +740,7 @@ class CollaborationModel:
             # If staying and moving give the same benefit, let B choose which one they want to do
             elif a_delta_if_stay == a_delta_if_move and a_delta_if_move > 0:
                 # print "Either option is the same, so..." 
-                # TODO: Figure out who drops objectives here... Player A because they're the initial requester, or Player B because they get to decide to move or join?
+                # Player A drops an objective because they are the initial requester
                 if b_delta_if_move >= 0 and b_delta_if_move > b_delta_if_stay:
                     # print "B wants to move"
                     # merged = move(player_b, player_a, a_delta_if_move, a_delta_if_stay, objective_to_give=a_best_if_stay)
@@ -992,15 +992,15 @@ class CollaborationModel:
         total_merges = 0
         merges_this_round = 0
 
-        print "Running variation {0} with a {1} focus".format(variation, "community" if community_motivation else "self-interested"), "\n"
+        # print "Running variation {0} with a {1} focus".format(variation, "community" if community_motivation else "self-interested"), "\n"
         
-        # Temporary team reporting
-        print "-----------------------------------------------------------------------------------------------------------------------"
-        print "Initial player allocations:"
-        print "-----------------------------------------------------------------------------------------------------------------------"
-        for i in self.players:
-            self.players[i].report()
-        print "-----------------------------------------------------------------------------------------------------------------------\n"
+        # # Temporary team reporting
+        # print "-----------------------------------------------------------------------------------------------------------------------"
+        # print "Initial player allocations:"
+        # print "-----------------------------------------------------------------------------------------------------------------------"
+        # for i in self.players:
+        #     self.players[i].report()
+        # print "-----------------------------------------------------------------------------------------------------------------------\n"
         
         before_total = str(self.community.total())
 
@@ -1033,28 +1033,28 @@ class CollaborationModel:
             # If x rounds without merges happen, stop looping
             if rounds_without_merges == faux_pareto_rounds_without_merges : break
 
-        print "-----------------------------------------------------------------------------------------------------------------------"
-        print "Final team allocations:"
-        print "-----------------------------------------------------------------------------------------------------------------------"
-        for team in self.teams:
-            team.report()
-        print "-----------------------------------------------------------------------------------------------------------------------"
+        # print "-----------------------------------------------------------------------------------------------------------------------"
+        # print "Final team allocations:"
+        # print "-----------------------------------------------------------------------------------------------------------------------"
+        # for team in self.teams:
+        #     team.report()
+        # print "-----------------------------------------------------------------------------------------------------------------------"
 
-        # Temporary team reporting
-        print "\n-----------------------------------------------------------------------------------------------------------------------"
-        print "Final player allocations:"
-        print "-----------------------------------------------------------------------------------------------------------------------"
-        for i in self.players:
-            self.players[i].report()
-        print "-----------------------------------------------------------------------------------------------------------------------"
+        # # Temporary team reporting
+        # print "\n-----------------------------------------------------------------------------------------------------------------------"
+        # print "Final player allocations:"
+        # print "-----------------------------------------------------------------------------------------------------------------------"
+        # for i in self.players:
+        #     self.players[i].report()
+        # print "-----------------------------------------------------------------------------------------------------------------------"
 
-        print "\nTotal number of team switches: {0}".format(total_merges)
-        print "Total community social value before playing: " + before_total
-        print "Total community social value after playing: " + str(self.community.total())
-        if len(dropped_objectives) > 0:
-            # print "Dropped objectives:", ', '.join('%s' % obj[0] for obj in dropped_objectives.values())
-            print "Dropped objectives:", ', '.join('{0} ({1} pts)'.format(obj[0], obj[1]) for obj in dropped_objectives.values())
-        # print total_merges, ",", before_total, ",", str(self.community.total())
+        # print "\nTotal number of team switches: {0}".format(total_merges)
+        # print "Total community social value before playing: " + before_total
+        # print "Total community social value after playing: " + str(self.community.total())
+        # if len(dropped_objectives) > 0:
+        #     # print "Dropped objectives:", ', '.join('%s' % obj[0] for obj in dropped_objectives.values())
+        #     print "Dropped objectives:", ', '.join('{0} ({1} pts)'.format(obj[0], obj[1]) for obj in dropped_objectives.values())
+        print total_merges, ",", before_total, ",", str(self.community.total())
             
     
     def largest_matching_team(self, team1, team2, team1_player, team2_player):
@@ -1221,6 +1221,7 @@ for _ in xrange(times_to_run_simulation):
     objective_pool = ObjectivePool(resource_pool)
     objs_table = objective_pool.table
     dropped_objectives = {}
+    # TODO: Keep track of traded objectives too
 
     # Run the simulation
     # CollaborationModel().test_run()
