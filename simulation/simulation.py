@@ -27,8 +27,8 @@ value_low = 10
 approximate_high_low_resource_ratio = 3
 approximate_high_low_objective_ratio = 3
 faux_pareto_rounds_without_merges = 25
-variation = 4  # Must be 1, 2, 3, or 4
-community_motivation = True  # Set to True to have everyone work for community value instead of personal value
+variation = 3  # Must be 1, 2, 3, or 4
+community_motivation = False  # Set to True to have everyone work for community value instead of personal value
 times_to_run_simulation = 1
 # seed(4567890)
 
@@ -41,6 +41,11 @@ shuffling = True
 # Run the simulation. Do not edit below this line.
 #---------------------------------------------------
 #---------------------------------------------------
+
+# Temporary sanity checking...
+# The algorithm chokes with high faux pareto values on variation 3, because it can be infinite
+if variation == 3:
+    faux_pareto_rounds_without_merges = 5
 
 #----------
 # Objects
@@ -601,7 +606,7 @@ class CollaborationModel:
 
         a_total_if_move = player_a.currentTotal(player_b.team, objective_to_drop=a_best_if_move)
         a_total_if_stay = player_a.currentTotal(player_b, object_is_team=False, objective_to_drop=a_best_if_stay)
-        # b_total_if_move = player_b.currentTotal(player_a.team, given_objective=a_best_if_stay, giver=player_a)  # TODO: Using these still results in 1200 points...
+        # b_total_if_move = player_b.currentTotal(player_a.team, given_objective=a_best_if_stay, giver=player_a)  # TODO: Using these still results in 1200 points, but that's probably reality.
         # b_total_if_stay = player_b.currentTotal(player_a, object_is_team=False, given_objective=a_best_if_move, giver=player_a)
         b_total_if_move = player_b.currentTotal(player_a.team)
         b_total_if_stay = player_b.currentTotal(player_a, object_is_team=False)
