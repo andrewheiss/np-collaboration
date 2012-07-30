@@ -27,8 +27,8 @@ value_low = 10
 approximate_high_low_resource_ratio = 3
 approximate_high_low_objective_ratio = 3
 faux_pareto_rounds_without_merges = 25
-variation = 1  # Must be 1, 2, 3, or 4
-community_motivation = False  # Set to True to have everyone work for community value instead of personal value
+variation = 4  # Must be 1, 2, 3, or 4
+community_motivation = True  # Set to True to have everyone work for community value instead of personal value
 times_to_run_simulation = 1
 # seed(4567890)
 
@@ -307,7 +307,7 @@ class Player:
         for i in objectives:
             self.objectives[i] = [objs_table[i]['name'], objs_table[i]['value']]
 
-    def currentTotal(self, test_object=None, object_is_team=True, new_team=False, objective_to_drop=None, given_objective=None, giver=None):
+    def currentTotal(self, test_object=None, object_is_team=True, new_team=False, alone=False, objective_to_drop=None, given_objective=None, giver=None):
         """Sum the values of all objectives that match a player's assigned resource
         
         Args:
@@ -330,9 +330,10 @@ class Player:
         else:
             objectives = self.objectives  # Use the full dictionary of objectives
 
-        # If no object is specified, use the actual team
-        if test_object is None:
-                resources = self.team.resources()
+        if alone:
+            resources = self.resource
+        elif test_object is None and not alone:  # If no object is specified, use the actual team
+            resources = self.team.resources()
         else:
             # Otherwise, create a hypothetical pool of team resources using by either 
             # (1) Combining the hypothetical team's resources and the actual player's single resource
@@ -414,7 +415,6 @@ class Player:
                     worthless_low[index] = details
 
         # Choose an objective to get rid of
-        # TODO: Decide if randomly choosing is better than choosing pseudo first dictionary element (dictionaries technically aren't ordered...)
         # worthless_low -> worthless_high -> good_low -> good_high
         if len(worthless_low.keys()) > 0:
             # best_objective = choice(worthless_low.keys())
@@ -441,80 +441,8 @@ class CollaborationModel:
             1: self.variation_1,
             2: self.variation_2,
             3: self.variation_3,
-            4: self.variation_4,
-            5: self.variation_5
+            4: self.variation_4
         }
-
-    def variation_5(self, player_a, player_b):
-        merged = False
-        team_a = player_a.team
-        team_b = player_b.team
-
-        community_before = self.community.total()
-
-        joint_resources_if_b_joins_a = uniquify(list(player_a.team.resources()) + list(player_b.resource))
-        joint_resources_if_a_goes_to_b = uniquify(list(player_b.team.resources()) + list(player_a.resource))
-
-        a_best_if_stay = player_a.best_given_objective(joint_resources_if_b_joins_a)
-        a_best_if_move = player_a.best_given_objective(joint_resources_if_a_goes_to_b)
-
-        a_total_if_move = player_a.currentTotal(player_b.team, objective_to_drop=a_best_if_move)
-        a_total_if_stay = player_a.currentTotal(player_b, object_is_team=False, objective_to_drop=a_best_if_stay)
-        b_total_if_move = player_b.currentTotal(player_a.team)
-        b_total_if_stay = player_b.currentTotal(player_a, object_is_team=False)
-
-        a_delta_if_move = a_total_if_move - player_a.currentTotal()  # A's hypothetical total on B's team after dropping an objective - A's current total
-        a_delta_if_stay = a_total_if_stay - player_a.currentTotal()  # A's hypothetical total if B joins A, after dropping an objective - A's current total
-        b_delta_if_move = b_total_if_move - player_b.currentTotal()  # B's hypothetical total on A's - B's current total
-        b_delta_if_stay = b_total_if_stay - player_b.currentTotal()  # B's hypothetical total if A joined B - B's current total
-
-        a_other_deltas = 0
-        b_other_deltas = 0
-        for player in [ p for p in team_a.players if p != player_a ]: # Iterate through all of the players on team A--exlcuding player A--to check their deltas
-            player_delta = player.currentTotal(player_b, object_is_team=False) - player.currentTotal()
-            a_other_deltas += player_delta
-            # print player.name, player_delta 
-
-        for player in [ p for p in team_b.players if p != player_b ]: # Iterate through all of the players on team A--exlcuding player A--to check their deltas
-            player_delta = player.currentTotal(player_b, object_is_team=False) - player.currentTotal()
-            b_other_deltas += player_delta
-            # print player.name, player_delta 
-
-        # print "Current community total:", community_before
-
-        community_total_a_to_b = community_before + a_delta_if_move + b_delta_if_stay + b_other_deltas
-        community_total_b_to_a = community_before + a_delta_if_stay + b_delta_if_move + a_other_deltas
-
-        # print "Community total if A moves and B stays:", community_total_a_to_b
-        # print "Community total if A stays and B moves:", community_total_b_to_a
-
-        community_delta_a_to_b = community_total_a_to_b - community_before
-        community_delta_b_to_a = community_total_b_to_a - community_before
-
-        # print "Change if A moves to B:", community_delta_a_to_b
-        # print "Change if B moves to A:", community_delta_b_to_a, "\n"
-
-        if community_delta_a_to_b > 0 and community_delta_a_to_b > community_delta_b_to_a:
-            # print "A should move to B"
-            player_a.joinTeam(team_b)
-            player_a.dropObjective(a_best_if_move)
-            merged = True
-        elif community_delta_b_to_a > 0 and community_delta_b_to_a > community_delta_a_to_b:
-            # print "B should move to A"
-            player_b.joinTeam(team_a)
-            player_a.dropObjective(a_best_if_stay)
-            merged = True
-        elif community_delta_a_to_b > 0 and community_delta_a_to_b == community_delta_b_to_a:
-            # print "Choose one..."
-            player_b.joinTeam(team_a)
-            player_a.dropObjective(a_best_if_stay)
-            merged = True
-        else:
-            # print "Don't do anything"
-            merged = False
-
-        return merged
-
 
     def variation_1(self, player_a, player_b):
         merged = False
@@ -568,9 +496,13 @@ class CollaborationModel:
                 player_a.dropObjective(a_best_if_stay)
                 merged = True
             elif community_delta_a_to_b > 0 and community_delta_a_to_b == community_delta_b_to_a:
-                # print "Choose one..."  # TODO: Actually choose one of these randomly
-                player_b.joinTeam(team_a)
-                player_a.dropObjective(a_best_if_stay)
+                # print "Choose one..." 
+                if choice(["move", "stay"]) == "stay":
+                    player_b.joinTeam(team_a)
+                    player_a.dropObjective(a_best_if_stay)
+                else:
+                    player_a.joinTeam(team_b)
+                    player_a.dropObjective(a_best_if_move)
                 merged = True
             else:
                 # print "Don't do anything"
@@ -667,7 +599,7 @@ class CollaborationModel:
         a_best_if_stay = player_a.best_given_objective(joint_resources_if_b_joins_a)
         a_best_if_move = player_a.best_given_objective(joint_resources_if_a_goes_to_b)
 
-        a_total_if_move = player_a.currentTotal(player_b.team, objective_to_drop=a_best_if_move)  # TODO: Make this work... When players take the new give objective into account, the results are too(?) perfect
+        a_total_if_move = player_a.currentTotal(player_b.team, objective_to_drop=a_best_if_move)
         a_total_if_stay = player_a.currentTotal(player_b, object_is_team=False, objective_to_drop=a_best_if_stay)
         # b_total_if_move = player_b.currentTotal(player_a.team, given_objective=a_best_if_stay, giver=player_a)  # TODO: Using these still results in 1200 points...
         # b_total_if_stay = player_b.currentTotal(player_a, object_is_team=False, given_objective=a_best_if_move, giver=player_a)
@@ -692,7 +624,7 @@ class CollaborationModel:
             a_other_deltas = 0
             b_other_deltas = 0
             for player in [ p for p in team_a.players if p != player_a ]: # Iterate through all of the players on team A--exlcuding player A--to check their deltas
-                player_delta = player.currentTotal(player_b, object_is_team=False) - player.currentTotal()  # TODO: Make sure this total is correct (i.e. reflects the new objective)... which shouldn't matter
+                player_delta = player.currentTotal(player_b, object_is_team=False) - player.currentTotal()
                 a_other_deltas += player_delta
 
             for player in [ p for p in team_b.players if p != player_b ]: 
@@ -716,9 +648,13 @@ class CollaborationModel:
                 player_b.joinTeam(team_a)
                 merged = True
             elif community_delta_a_to_b > 0 and community_delta_a_to_b == community_delta_b_to_a:
-                # print "Choose one..."  # TODO: Choose to either move or stay...
-                player_a.giveObjective(a_best_if_stay, player_b)
-                player_b.joinTeam(team_a)
+                # print "Choose one..."
+                if choice(["move", "stay"]) == "stay":
+                    player_a.giveObjective(a_best_if_stay, player_b)
+                    player_b.joinTeam(team_a)
+                else:
+                    player_a.giveObjective(a_best_if_move, player_b)
+                    player_a.joinTeam(team_b)
                 merged = True
             else:
                 # print "Don't do anything"
@@ -841,7 +777,6 @@ class CollaborationModel:
         b_delta_if_move = b_total_if_move - player_b.currentTotal()  # B's hypothetical total on A's - B's current total
         b_delta_if_stay = b_total_if_stay - player_b.currentTotal()  # B's hypothetical total if A joined B - B's current total
 
-        # TODO: Make these conditional on community vs. individual welfare. Keep variable names the same.
         if community_motivation is True:
             community_before = self.community.total()
 
@@ -872,7 +807,10 @@ class CollaborationModel:
                 merged = True
             elif community_delta_a_to_b > 0 and community_delta_a_to_b == community_delta_b_to_a:
                 # print "Choose one..."
-                player_b.joinTeam(team_a)  # TODO: Randomly choose to leave or stay
+                if choice(["move", "stay"]) == "stay":
+                    player_b.joinTeam(team_a)
+                else:
+                    player_a.joinTeam(team_b)
                 merged = True
             else:
                 # print "Don't do anything"
@@ -944,51 +882,75 @@ class CollaborationModel:
         team_a = player_a.team
         team_b = player_b.team
 
-        # TODO: Make these conditional on community vs. individual welfare. Keep variable names the same.
+        a_current = player_a.currentTotal()
+        b_current = player_b.currentTotal()
+        a_new_team = player_a.currentTotal(player_b, object_is_team=False, new_team=True)
+        b_new_team = player_b.currentTotal(player_a, object_is_team=False, new_team=True)
+        a_delta_if_new_team = a_new_team - a_current
+        b_delta_if_new_team = b_new_team - b_current
+
         if community_motivation is True:
-            pass
-        else:
-            a_current = player_a.currentTotal()
-            b_current = player_b.currentTotal()
-            a_new_team = player_a.currentTotal(player_b, object_is_team=False, new_team=True)
-            b_new_team = player_b.currentTotal(player_a, object_is_team=False, new_team=True)
-            a_delta_if_new_team = a_new_team - a_current
-            b_delta_if_new_team = b_new_team - b_current
+            community_before = self.community.total()
+            # print "Player A currently", a_current
+            # print "Player B currently", b_current
+            # print "Player A if they make a new team:", a_new_team
+            # print "Player B if they make a new team:", b_new_team
 
-        # print "\nPlayer A with A+B team:", player_a.currentTotal(player_b, object_is_team=False, new_team=True)
-        # print "Player B with A+B team:", player_b.currentTotal(player_a, object_is_team=False, new_team=True)
+            # Calculate deltas for team members left behind
+            other_deltas = 0
+            for player in [ p for p in (team_a.players + team_b.players) if (p != player_a and p != player_b) ]: # Iterate through all of the other players on the teams
+                player_delta = player.currentTotal(alone=True) - player.currentTotal()
+                other_deltas += player_delta
 
-        # print "\nChange for A if create A+B team:", a_delta_if_new_team
-        # print "Change for B if create A+B team:", b_delta_if_new_team
+            # print "Other deltas", other_deltas
 
-        # A's turn to make changes first
-        if a_delta_if_new_team > 0:
-            # print "Try to make a new team with B."
+            community_total_new_team = community_before + a_delta_if_new_team + b_delta_if_new_team + other_deltas
+            community_delta_new_team = community_total_new_team - community_before
+            # print "Community total with new team:", community_total_new_team
+            # print "Community delta with new team:", community_delta_new_team
 
-            if b_delta_if_new_team > 0:
-                # print "B agrees. Make a new team."
+            if community_delta_new_team > 0:
+                # print "Create new team"
+                # player_a.joinTeam(team_b)
                 merge_occurred = True
             else:
-                # print "B doesn't agree. No new team."
+                # print "Don't do anything"
                 merge_occurred = False
         else:
-            # print "Don't try to make a new team."
-            merge_occurred = False
+            # print "\nPlayer A with A+B team:", player_a.currentTotal(player_b, object_is_team=False, new_team=True)
+            # print "Player B with A+B team:", player_b.currentTotal(player_a, object_is_team=False, new_team=True)
 
-        # If nothing happened, let B try to make a change
-        if merge_occurred is False:
-            # print "B wants to try something too."
+            # print "\nChange for A if create A+B team:", a_delta_if_new_team
+            # print "Change for B if create A+B team:", b_delta_if_new_team
 
-            if b_delta_if_new_team > 0:
-                if a_delta_if_new_team > 0:
-                    # print "A agrees. Make a new team."
+            # A's turn to make changes first
+            if a_delta_if_new_team > 0:
+                # print "Try to make a new team with B."
+
+                if b_delta_if_new_team > 0:
+                    # print "B agrees. Make a new team."
                     merge_occurred = True
                 else:
-                    # print "A doesn't agree. No new team."
+                    # print "B doesn't agree. No new team."
                     merge_occurred = False
             else:
-                # print "Just kidding. B doesn't want to do anything."
+                # print "Don't try to make a new team."
                 merge_occurred = False
+
+            # If nothing happened, let B try to make a change
+            if merge_occurred is False:
+                # print "B wants to try something too."
+
+                if b_delta_if_new_team > 0:
+                    if a_delta_if_new_team > 0:
+                        # print "A agrees. Make a new team."
+                        merge_occurred = True
+                    else:
+                        # print "A doesn't agree. No new team."
+                        merge_occurred = False
+                else:
+                    # print "Just kidding. B doesn't want to do anything."
+                    merge_occurred = False
 
         if merge_occurred:
             # print "Yay! Something good happened!"
@@ -1005,10 +967,10 @@ class CollaborationModel:
     def test_run(self):
         print "Running variation {0}, with a {1} focus".format(variation, "community" if community_motivation else "self-interested")
         self.players[1].joinTeam(self.teams[0])
-        # self.players[5].joinTeam(self.teams[2])
+        self.players[5].joinTeam(self.teams[2])
         # for i in self.players:
         #     self.players[i].report()
-
+        print self.community.total()
         self.variations[variation](self.players[0], self.players[2])
 
         # for team in self.teams:
