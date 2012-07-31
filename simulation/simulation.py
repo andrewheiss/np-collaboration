@@ -27,9 +27,9 @@ value_low = 10
 approximate_high_low_resource_ratio = 3
 approximate_high_low_objective_ratio = 3
 faux_pareto_rounds_without_merges = 25
-variation = 4  # Must be 1, 2, 3, or 4
+variation = 1  # Must be 1, 2, 3, or 4
 community_motivation = True  # Set to True to have everyone work for community value instead of personal value
-times_to_run_simulation = 100
+times_to_run_simulation = 1
 # seed(4567890)
 
 # Turn on random allocation
@@ -207,10 +207,23 @@ class Community:
         return total
 
     def activeTeams(self):
-        return [ team.index for team in self.teams if team.playerCount() > 0 ]
+        return [ team for team in self.teams if team.playerCount() > 0 ]
 
     def last_team_index(self):
         return self.teams[-1].index
+
+    def teamStats(self):
+        team_sizes = [ team.playerCount() for team in self.activeTeams() ]
+        TeamStatistics = namedtuple('TeamStatistics', 'number, min, max, mean, median')
+        return TeamStatistics(len(team_sizes), min(team_sizes), max(team_sizes), mean(team_sizes), median(team_sizes))
+
+    def individualStats(self):
+        player_scores = [player.currentTotal() for i, player in self.players.items() ]
+        IndividualStatistics = namedtuple('IndividualStatistics', 'min, max, mean, median')
+        return IndividualStatistics(min(player_scores), max(player_scores), mean(player_scores), median(player_scores))
+
+    def potentialTotal(self):
+        return sum(objective['value'] for objective in objs_table)
 
 
 class Team:
@@ -363,11 +376,13 @@ class Player:
     
     def dropObjective(self, objective_to_drop):
         """Drop an objective, moving it to the global `dropped_objectives` dictionary of lists"""
-        dropped_objectives[objective_to_drop] = self.objectives.pop(objective_to_drop)
+        # dropped_objectives[objective_to_drop] = self.objectives.pop(objective_to_drop)
+        dropped_objectives.append(self.objectives.pop(objective_to_drop))
 
     def giveObjective(self, objective_to_give, receiver):
         """Give an objective to a specified player"""
         give_away = self.objectives.pop(objective_to_give)
+        traded_objectives.append(give_away)
         receiver.objectives[objective_to_give] = give_away
     
     def joinTeam(self, team):
@@ -987,9 +1002,10 @@ class CollaborationModel:
         print self.community.total()
 
 
-    def run(self):
+    def run(self, run_number):
         rounds_without_merges = 0
         total_merges = 0
+        total_encounters = 0
         merges_this_round = 0
 
         # print "Running variation {0} with a {1} focus".format(variation, "community" if community_motivation else "self-interested"), "\n"
@@ -1002,7 +1018,9 @@ class CollaborationModel:
         #     self.players[i].report()
         # print "-----------------------------------------------------------------------------------------------------------------------\n"
         
+        # Data to capture before starting team merges
         before_total = str(self.community.total())
+        individual_statistics_before = self.community.individualStats()
 
         while True:
             # Track how many team merges happen
@@ -1023,6 +1041,7 @@ class CollaborationModel:
                 if a.team != b.team:  # If the players aren't already on the same team
                     if self.variations[variation](a, b) == True:  # Run the specified variation
                         merges_this_round += 1
+                    total_encounters += 1  # Update how many encounters occurred
             
             # If no merges happened this round, mark it
             if merges_this_round == 0:
@@ -1032,6 +1051,51 @@ class CollaborationModel:
             
             # If x rounds without merges happen, stop looping
             if rounds_without_merges == faux_pareto_rounds_without_merges : break
+
+        #-----------------
+        # Data to export
+        #-----------------
+        team_statistics = self.community.teamStats()
+        individual_statistics_after = self.community.individualStats()
+        self.community.potentialTotal()
+
+        print "id:", run_number + 1
+        print "variation:", variation
+        print "player_count:", num_players
+        print "community_motivation", 1 if community_motivation else 0
+        print "encounters:", total_encounters
+        print "switches:", total_merges
+        print "switch_ratio:", total_merges / float(total_encounters) 
+
+        print "number_of_teams:", team_statistics.number
+        print "team_size_min:", team_statistics.min
+        print "team_size_max:", team_statistics.max
+        print "team_size_mean:", team_statistics.mean
+        print "team_size_median:", team_statistics.median
+
+        print "indiv_total_min_before:", individual_statistics_before.min
+        print "indiv_total_max_before:", individual_statistics_before.max
+        print "indiv_total_mean_before:", individual_statistics_before.mean
+        print "indiv_total_median_before:", individual_statistics_before.median
+
+        print "indiv_total_min_after:", individual_statistics_after.min
+        print "indiv_total_max_after:", individual_statistics_after.max
+        print "indiv_total_mean_after:", individual_statistics_after.mean
+        print "indiv_total_median_after:", individual_statistics_after.median
+
+        print "social_value_before:", before_total
+        print "social_value_after:", self.community.total()
+        print "potential_social_value:", self.community.potentialTotal()
+        print "unmet_social_value:", self.community.potentialTotal() - self.community.total()
+        print "percent_social_value_met:", self.community.total() / float(self.community.potentialTotal())
+
+        # a1_value
+        # a1_count
+        # a1_rare
+        # a1_trades
+        # a1_dropped
+        # a1_fulfilled
+        # a2_value
 
         # print "-----------------------------------------------------------------------------------------------------------------------"
         # print "Final team allocations:"
@@ -1051,10 +1115,13 @@ class CollaborationModel:
         # print "\nTotal number of team switches: {0}".format(total_merges)
         # print "Total community social value before playing: " + before_total
         # print "Total community social value after playing: " + str(self.community.total())
-        # if len(dropped_objectives) > 0:
-        #     # print "Dropped objectives:", ', '.join('%s' % obj[0] for obj in dropped_objectives.values())
-        #     print "Dropped objectives:", ', '.join('{0} ({1} pts)'.format(obj[0], obj[1]) for obj in dropped_objectives.values())
-        print total_merges, ",", before_total, ",", str(self.community.total())
+        if len(dropped_objectives) > 0:
+            print "Number of objectives dropped:", len(dropped_objectives)
+            print "Dropped objectives:", ', '.join('{0} ({1} pts)'.format(obj[0], obj[1]) for obj in dropped_objectives)
+        if len(traded_objectives) > 0:
+            print "Number of objectives traded:", len(traded_objectives)
+            print "Traded objectives:", ', '.join('{0} ({1} pts)'.format(obj[0], obj[1]) for obj in traded_objectives)
+        # print total_merges, ",", before_total, ",", str(self.community.total())
             
     
     def largest_matching_team(self, team1, team2, team1_player, team2_player):
@@ -1184,6 +1251,18 @@ def uniquify(seq):
     seen_add = seen.add
     return [ x for x in seq if x not in seen and not seen_add(x)]
 
+def mean(n):
+    if len(n):
+        return sum(n) / float(len(n))
+    else:
+        return 0.0
+
+def median(n):
+    l = len(n)
+    if not l%2:
+        return (n[(l/2)-1]+n[l/2])/2.0
+    return n[l/2]
+
 
 # Temporary faux pretty printing functions
 def listPlayers():
@@ -1215,34 +1294,45 @@ def printObjectivesPool():
 # Actual simulation procedure
 #------------------------------
 
-for _ in xrange(times_to_run_simulation):
+for i in xrange(times_to_run_simulation):
     # Create the global resource and objective pools 
     resource_pool = ResourcePool(num_resources, num_players)
     objective_pool = ObjectivePool(resource_pool)
     objs_table = objective_pool.table
-    dropped_objectives = {}
+    dropped_objectives = []
+    traded_objectives = []
     # TODO: Keep track of traded objectives too
 
     # Run the simulation
     # CollaborationModel().test_run()
-    CollaborationModel().run()
+    CollaborationModel().run(i)
 
     # TODO: Export these things to CSV:
-
-    # 1. Data on pre vs. post values (mean and median) for players and
-    # society, including both totals and averages for the personal and
-    # social value values
-
-    # 2. Difference between the maximum total possible values and the values
-    # actually achieved
-
-    # 3. Number of encounters, number of switches, and a ratio of switches to bumps
-
-    # 4. All kinds of data about the objectives and resources
-    # themselves--team sizes, level of fulfillment (points realized), points
-    # unrealized
-
-    # 5. Number of teams, sizes of teams
+    # id
+    # player_count
+    # social_motivation
+    # encounters
+    # switches
+    # switches_to_bumps
+    # individual_total_mean
+    # individual_total_median
+    # number_of_teams
+    # team_size_min
+    # team_size_max
+    # team_size_median
+    # team_size_mean
+    # social_value_before
+    # social_value_after
+    # potential_social_value
+    # unmet_social_value
+    # a1_value
+    # a1_count
+    # a1_rare
+    # a1_trades
+    # a1_dropped
+    # a1_fulfilled
+    # a2_value
+    # ...
 
     # MAYBE: Export a text-based version of a single run
     # MAYBE: Use RPy to build fancy ggplot graphs automatically
