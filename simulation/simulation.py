@@ -222,8 +222,8 @@ class Community:
         IndividualStatistics = namedtuple('IndividualStatistics', 'min, max, mean, median')
         return IndividualStatistics(min(player_scores), max(player_scores), mean(player_scores), median(player_scores))
 
-    def potentialTotal(self):
-        return sum(objective['value'] for objective in objs_table)
+    def potentialTotal(self, objectives_table):
+        return sum(objective['value'] for objective in objectives_table)
 
 
 class Team:
@@ -303,7 +303,7 @@ class Player:
         A new player object
     """
 
-    def __init__(self, sim, name, resource, objectives):
+    def __init__(self, sim, name, resource, objectives, objectives_table):
         """Creates a new Player object
         
         Creates a player based on resources and objectives created beforehand (i.e. players should be created as part of a loop that allocates resources and objectives).
@@ -323,7 +323,7 @@ class Player:
         # {`index`: [`objective name`, `objective value`]}
         self.objectives = {}
         for i in objectives:
-            self.objectives[i] = [objs_table[i]['name'], objs_table[i]['value']]
+            self.objectives[i] = [objectives_table[i]['name'], objectives_table[i]['value']]
 
     def currentTotal(self, test_object=None, object_is_team=True, new_team=False, alone=False, objective_to_drop=None, given_objective=None, giver=None):
         """Sum the values of all objectives that match a player's assigned resource
@@ -374,15 +374,15 @@ class Player:
                     total += details[1]
         return total
     
-    def dropObjective(self, objective_to_drop):
+    def dropObjective(self, objective_to_drop, dropped_objectives_list):
         """Drop an objective, moving it to the global `dropped_objectives` dictionary of lists"""
         # dropped_objectives[objective_to_drop] = self.objectives.pop(objective_to_drop)
-        dropped_objectives.append(self.objectives.pop(objective_to_drop))
+        dropped_objectives_list.append(self.objectives.pop(objective_to_drop))
 
-    def giveObjective(self, objective_to_give, receiver):
+    def giveObjective(self, objective_to_give, receiver, traded_objectives_list):
         """Give an objective to a specified player"""
         give_away = self.objectives.pop(objective_to_give)
-        traded_objectives.append(give_away)
+        traded_objectives_list.append(give_away)
         receiver.objectives[objective_to_give] = give_away
     
     def joinTeam(self, team):
@@ -463,6 +463,213 @@ class CollaborationModel:
             3: self.variation_3,
             4: self.variation_4
         }
+        self.dropped_objectives = []
+        self.traded_objectives = []
+
+    def build(self):
+        resource_pool = ResourcePool(num_resources, num_players)
+        objective_pool = ObjectivePool(resource_pool)
+        self.objs_table = objective_pool.table
+        # Initialize empty players dictionary (only a dictionary so it can be indexed)
+        players = {}
+
+        # Build the players list and index of objectives
+        players_list = range(num_players)
+        objs_index = range(objective_pool.num_objs)
+        # print(resource_pool.pool)
+        # print(objective_pool.pool)
+
+        # Shuffle the lists if shuffling is enabled
+        if shuffling == True:
+            shuffle(players_list)
+            shuffle(objs_index)
+
+        # `count` keeps track of the number of times a resource is allocated to a player. It will only ever go up to `num_players`
+        count = 0
+
+        # Initialize starting and stopping variables for slicing the objectives list
+        start = 0
+        stop = num_objs_per_player
+        
+        # Loop through the resource and objective pools and assign resources and objectives to each player. 
+        # Player numbers are assigned using `count` as an index to `combined`
+        for resource, quantity in sorted(resource_pool.pool.items()):
+            for i in range(quantity):
+                # Create a new player and add it to the players dictionary
+                players[players_list[count]] = Player(name="Player %02d"%players_list[count], resource=resource, objectives=objs_index[start:stop:1], sim=self, objectives_table=self.objs_table)
+
+                # Increment everything
+                count += 1
+                start += num_objs_per_player
+                stop += num_objs_per_player
+        
+        self.players = players
+
+
+    def createTeams(self):
+        self.teams = []
+        for i, player in enumerate(self.players.values()):
+            startingTeam = Team(i)
+            startingTeam.addPlayer(player)
+            self.teams.append(startingTeam)
+            self.players[i].setInitialTeam(startingTeam)
+
+
+    def test_run(self):
+        print "Running variation {0}, with a {1} focus".format(variation, "community" if community_motivation else "self-interested")
+        self.players[1].joinTeam(self.teams[0])
+        self.players[5].joinTeam(self.teams[2])
+        # for i in self.players:
+        #     self.players[i].report()
+        print self.community.total()
+        self.variations[variation](self.players[0], self.players[2])
+
+        # for team in self.teams:
+        #     team.report()
+
+        # for i in self.players:
+        #     self.players[i].report()
+
+        print self.community.total()
+
+
+    def run(self, run_number):
+        rounds_without_merges = 0
+        total_merges = 0
+        total_encounters = 0
+        merges_this_round = 0
+
+        # print "Running variation {0} with a {1} focus".format(variation, "community" if community_motivation else "self-interested"), "\n"
+        
+        # # Temporary team reporting
+        # print "-----------------------------------------------------------------------------------------------------------------------"
+        # print "Initial player allocations:"
+        # print "-----------------------------------------------------------------------------------------------------------------------"
+        # for i in self.players:
+        #     self.players[i].report()
+        # print "-----------------------------------------------------------------------------------------------------------------------\n"
+        
+        # Data to capture before starting team merges
+        before_total = str(self.community.total())
+        individual_statistics_before = self.community.individualStats()
+
+        while True:
+            # Track how many team merges happen
+            total_merges += merges_this_round
+            merges_this_round = 0
+
+            players_list = range(len(self.players))  # Build list of player indexes
+            shuffle(players_list)  # ...and shuffle it
+
+            # Pair each index up at random... those two players then meet and run the appropriate algorithm
+            pairs_of_players = list(pairs(players_list))
+            shuffle(pairs_of_players)
+
+            for pair in pairs_of_players:
+                a = self.players[pair[0]]
+                b = self.players[pair[1]]
+
+                if a.team != b.team:  # If the players aren't already on the same team
+                    if self.variations[variation](a, b) == True:  # Run the specified variation
+                        merges_this_round += 1
+                    total_encounters += 1  # Update how many encounters occurred
+            
+            # If no merges happened this round, mark it
+            if merges_this_round == 0:
+                rounds_without_merges += 1
+            else:
+                rounds_without_merges = 0
+            
+            # If x rounds without merges happen, stop looping
+            if rounds_without_merges == faux_pareto_rounds_without_merges : break
+
+        #-----------------
+        # Data to export
+        #-----------------
+        team_statistics = self.community.teamStats()
+        individual_statistics_after = self.community.individualStats()
+
+        # TODO: Export these things to CSV:
+        print "id:", run_number + 1
+        print "variation:", variation
+        print "player_count:", num_players
+        print "community_motivation", 1 if community_motivation else 0
+        print "encounters:", total_encounters
+        print "switches:", total_merges
+        print "switch_ratio:", total_merges / float(total_encounters) 
+
+        print "number_of_teams:", team_statistics.number
+        print "team_size_min:", team_statistics.min
+        print "team_size_max:", team_statistics.max
+        print "team_size_mean:", team_statistics.mean
+        print "team_size_median:", team_statistics.median
+
+        print "indiv_total_min_before:", individual_statistics_before.min
+        print "indiv_total_max_before:", individual_statistics_before.max
+        print "indiv_total_mean_before:", individual_statistics_before.mean
+        print "indiv_total_median_before:", individual_statistics_before.median
+
+        print "indiv_total_min_after:", individual_statistics_after.min
+        print "indiv_total_max_after:", individual_statistics_after.max
+        print "indiv_total_mean_after:", individual_statistics_after.mean
+        print "indiv_total_median_after:", individual_statistics_after.median
+
+        print "indiv_delta_mean:", individual_statistics_after.mean - individual_statistics_before.mean
+        print "indiv_delta_median:", individual_statistics_after.median - individual_statistics_before.median
+
+        print "social_value_before:", before_total
+        print "social_value_after:", self.community.total()
+        print "potential_social_value:", self.community.potentialTotal(self.objs_table)
+        print "unmet_social_value:", self.community.potentialTotal(self.objs_table) - self.community.total()
+        print "percent_social_value_met:", self.community.total() / float(self.community.potentialTotal(self.objs_table))
+
+        # a1_value
+        # a1_count
+        # a1_high_freq
+        # a1_trades
+        # a1_dropped
+        # a1_fulfilled
+        # a2_value
+
+        # print "-----------------------------------------------------------------------------------------------------------------------"
+        # print "Final team allocations:"
+        # print "-----------------------------------------------------------------------------------------------------------------------"
+        # for team in self.teams:
+        #     team.report()
+        # print "-----------------------------------------------------------------------------------------------------------------------"
+
+        # # Temporary team reporting
+        # print "\n-----------------------------------------------------------------------------------------------------------------------"
+        # print "Final player allocations:"
+        # print "-----------------------------------------------------------------------------------------------------------------------"
+        # for i in self.players:
+        #     self.players[i].report()
+        # print "-----------------------------------------------------------------------------------------------------------------------"
+
+        # print "\nTotal number of team switches: {0}".format(total_merges)
+        # print "Total community social value before playing: " + before_total
+        # print "Total community social value after playing: " + str(self.community.total())
+        if len(self.dropped_objectives) > 0:
+            print "Number of objectives dropped:", len(self.dropped_objectives)
+            print "Dropped objectives:", ', '.join('{0} ({1} pts)'.format(obj[0], obj[1]) for obj in self.dropped_objectives)
+        if len(self.traded_objectives) > 0:
+            print "Number of objectives traded:", len(self.traded_objectives)
+            print "Traded objectives:", ', '.join('{0} ({1} pts)'.format(obj[0], obj[1]) for obj in self.traded_objectives)
+        # print total_merges, ",", before_total, ",", str(self.community.total())
+
+
+    #--------------------------------------------------------------------------
+    # Decision algorithms
+    #--------------------------------------------------------------------------
+    def largest_matching_team(self, team1, team2, team1_player, team2_player):
+        """Simple temporary algorithm for development. Players join the team with the largest number of matching resources. As a result, players congregrate to teams/networks of their own resorce."""
+        if team1_player.resource == team2_player.resource:  
+            if team1.playerCount() > team2.playerCount():
+                team2_player.joinTeam(team1)
+            else:
+                team1_player.joinTeam(team2)
+            return True
+
 
     def variation_1(self, player_a, player_b):
         merged = False
@@ -508,21 +715,21 @@ class CollaborationModel:
             if community_delta_a_to_b > 0 and community_delta_a_to_b > community_delta_b_to_a:
                 # print "A should move to B"
                 player_a.joinTeam(team_b)
-                player_a.dropObjective(a_best_if_move)
+                player_a.dropObjective(a_best_if_move, dropped_objectives_list=self.dropped_objectives)
                 merged = True
             elif community_delta_b_to_a > 0 and community_delta_b_to_a > community_delta_a_to_b:
                 # print "B should move to A"
                 player_b.joinTeam(team_a)
-                player_a.dropObjective(a_best_if_stay)
+                player_a.dropObjective(a_best_if_stay, dropped_objectives_list=self.dropped_objectives)
                 merged = True
             elif community_delta_a_to_b > 0 and community_delta_a_to_b == community_delta_b_to_a:
                 # print "Choose one..." 
                 if choice(["move", "stay"]) == "stay":
                     player_b.joinTeam(team_a)
-                    player_a.dropObjective(a_best_if_stay)
+                    player_a.dropObjective(a_best_if_stay, dropped_objectives_list=self.dropped_objectives)
                 else:
                     player_a.joinTeam(team_b)
-                    player_a.dropObjective(a_best_if_move)
+                    player_a.dropObjective(a_best_if_move, dropped_objectives_list=self.dropped_objectives)
                 merged = True
             else:
                 # print "Don't do anything"
@@ -573,11 +780,11 @@ class CollaborationModel:
 
             # If moving to B's team is better than staying, ask permission to move
             elif a_delta_if_move >= 0 and a_delta_if_move > a_delta_if_stay:
-                merged = move(player_a, player_b, b_delta_if_move, b_delta_if_stay, objective_to_drop=a_best_if_move)
+                merged = self.move(player_a, player_b, b_delta_if_move, b_delta_if_stay, objective_to_drop=a_best_if_move)
 
             # If staying is better than moving to B's team, invite B to join
             elif a_delta_if_stay >= 0 and a_delta_if_stay > a_delta_if_move:
-                merged = invite(player_a, player_b, b_delta_if_move, b_delta_if_stay, objective_to_drop=a_best_if_stay)
+                merged = self.invite(player_a, player_b, b_delta_if_move, b_delta_if_stay, objective_to_drop=a_best_if_stay)
 
             # If staying and moving give the same benefit, let B choose which one they want to do
             elif a_delta_if_stay == a_delta_if_move and a_delta_if_move > 0:
@@ -585,18 +792,18 @@ class CollaborationModel:
                 # Player A drops an objective because they are the initial requester
                 if b_delta_if_move >= 0 and b_delta_if_move > b_delta_if_stay:
                     # print "B wants to move"
-                    # merged = move(player_b, player_a, a_delta_if_move, a_delta_if_stay, objective_to_drop=a_best_if_stay)
-                    merged = invite(player_a, player_b, b_delta_if_move, b_delta_if_stay, objective_to_drop=a_best_if_stay)
+                    # merged = self.move(player_b, player_a, a_delta_if_move, a_delta_if_stay, objective_to_drop=a_best_if_stay)
+                    merged = self.invite(player_a, player_b, b_delta_if_move, b_delta_if_stay, objective_to_drop=a_best_if_stay)
                 elif b_delta_if_stay >= 0 and b_delta_if_stay > b_delta_if_move:
                     # print "B wants to stay"
-                    # merged = invite(player_b, player_a, a_delta_if_move, a_delta_if_stay, a_best_if_move)
-                    merged = move(player_a, player_b, b_delta_if_move, b_delta_if_stay, objective_to_drop=a_best_if_move)
+                    # merged = self.invite(player_b, player_a, a_delta_if_move, a_delta_if_stay, a_best_if_move)
+                    merged = self.move(player_a, player_b, b_delta_if_move, b_delta_if_stay, objective_to_drop=a_best_if_move)
                 elif b_delta_if_stay == b_delta_if_move and b_delta_if_move > 0:
                     # print "Choose a random thing"
-                    actions = [move, invite]
+                    actions = [self.move, self.invite]
                     action = choice(actions)
 
-                    if action == move:
+                    if action == self.move:
                         merged = action(player_a, player_b, b_delta_if_move, b_delta_if_stay, objective_to_drop=a_best_if_move)
                     else:
                         merged = action(player_a, player_b, b_delta_if_move, b_delta_if_stay, objective_to_drop=a_best_if_stay)
@@ -659,21 +866,21 @@ class CollaborationModel:
 
             if community_delta_a_to_b > 0 and community_delta_a_to_b > community_delta_b_to_a:
                 # print "A should move to B"
-                player_a.giveObjective(a_best_if_move, player_b)
+                player_a.giveObjective(a_best_if_move, player_b, traded_objectives_list=self.traded_objectives)
                 player_a.joinTeam(team_b)
                 merged = True
             elif community_delta_b_to_a > 0 and community_delta_b_to_a > community_delta_a_to_b:
                 # print "B should move to A"
-                player_a.giveObjective(a_best_if_stay, player_b)
+                player_a.giveObjective(a_best_if_stay, player_b, traded_objectives_list=self.traded_objectives)
                 player_b.joinTeam(team_a)
                 merged = True
             elif community_delta_a_to_b > 0 and community_delta_a_to_b == community_delta_b_to_a:
                 # print "Choose one..."
                 if choice(["move", "stay"]) == "stay":
-                    player_a.giveObjective(a_best_if_stay, player_b)
+                    player_a.giveObjective(a_best_if_stay, player_b, traded_objectives_list=self.traded_objectives)
                     player_b.joinTeam(team_a)
                 else:
-                    player_a.giveObjective(a_best_if_move, player_b)
+                    player_a.giveObjective(a_best_if_move, player_b, traded_objectives_list=self.traded_objectives)
                     player_a.joinTeam(team_b)
                 merged = True
             else:
@@ -746,11 +953,11 @@ class CollaborationModel:
 
             # If moving to B's team is better than staying, ask permission to move
             elif a_delta_if_move >= 0 and a_delta_if_move > a_delta_if_stay:
-                merged = move(player_a, player_b, b_delta_if_move, b_delta_if_stay, objective_to_give=a_best_if_move)
+                merged = self.move(player_a, player_b, b_delta_if_move, b_delta_if_stay, objective_to_give=a_best_if_move)
 
             # If staying is better than moving to B's team, invite B to join
             elif a_delta_if_stay >= 0 and a_delta_if_stay > a_delta_if_move:
-                merged = invite(player_a, player_b, b_delta_if_move, b_delta_if_stay, objective_to_give=a_best_if_stay)
+                merged = self.invite(player_a, player_b, b_delta_if_move, b_delta_if_stay, objective_to_give=a_best_if_stay)
 
             # If staying and moving give the same benefit, let B choose which one they want to do
             elif a_delta_if_stay == a_delta_if_move and a_delta_if_move > 0:
@@ -758,18 +965,18 @@ class CollaborationModel:
                 # Player A drops an objective because they are the initial requester
                 if b_delta_if_move >= 0 and b_delta_if_move > b_delta_if_stay:
                     # print "B wants to move"
-                    # merged = move(player_b, player_a, a_delta_if_move, a_delta_if_stay, objective_to_give=a_best_if_stay)
-                    merged = invite(player_a, player_b, b_delta_if_move, b_delta_if_stay, objective_to_give=a_best_if_stay)
+                    # merged = self.move(player_b, player_a, a_delta_if_move, a_delta_if_stay, objective_to_give=a_best_if_stay)
+                    merged = self.invite(player_a, player_b, b_delta_if_move, b_delta_if_stay, objective_to_give=a_best_if_stay)
                 elif b_delta_if_stay >= 0 and b_delta_if_stay > b_delta_if_move:
                     # print "B wants to stay"
-                    # merged = invite(player_b, player_a, a_delta_if_move, a_delta_if_stay, a_best_if_move)
-                    merged = move(player_a, player_b, b_delta_if_move, b_delta_if_stay, objective_to_give=a_best_if_move)
+                    # merged = self.invite(player_b, player_a, a_delta_if_move, a_delta_if_stay, a_best_if_move)
+                    merged = self.move(player_a, player_b, b_delta_if_move, b_delta_if_stay, objective_to_give=a_best_if_move)
                 elif b_delta_if_stay == b_delta_if_move and b_delta_if_move > 0:
                     # print "Choose a random thing"
-                    actions = [move, invite]
+                    actions = [self.move, self.invite]
                     action = choice(actions)
 
-                    if action == move:
+                    if action == self.move:
                         merged = action(player_a, player_b, b_delta_if_move, b_delta_if_stay, objective_to_give=a_best_if_move)
                     else:
                         merged = action(player_a, player_b, b_delta_if_move, b_delta_if_stay, objective_to_give=a_best_if_stay)
@@ -870,11 +1077,11 @@ class CollaborationModel:
 
             # If moving to B's team is better than staying, ask permission to move
             elif a_delta_if_move >= 0 and a_delta_if_move > a_delta_if_stay:
-                merged = move(player_a, player_b, b_delta_if_move, b_delta_if_stay)
+                merged = self.move(player_a, player_b, b_delta_if_move, b_delta_if_stay)
 
             # If staying is better than moving to B's team, invite B to join
             elif a_delta_if_stay >= 0 and a_delta_if_stay > a_delta_if_move:
-                merged = invite(player_a, player_b, b_delta_if_move, b_delta_if_stay)
+                merged = self.invite(player_a, player_b, b_delta_if_move, b_delta_if_stay)
 
             # If staying and moving give the same benefit, let B choose which one they want to do
             elif a_delta_if_stay == a_delta_if_move and a_delta_if_move > 0:
@@ -882,13 +1089,13 @@ class CollaborationModel:
 
                 if b_delta_if_move >= 0 and b_delta_if_move > b_delta_if_stay:
                     # print "Try to move to A"
-                    merged = move(player_b, player_a, a_delta_if_move, a_delta_if_stay)
+                    merged = self.move(player_b, player_a, a_delta_if_move, a_delta_if_stay)
                 elif b_delta_if_stay >= 0 and b_delta_if_stay > b_delta_if_move:
                     # print "Invite A to join B"
-                    merged = invite(player_b, player_a, a_delta_if_move, a_delta_if_stay)
+                    merged = self.invite(player_b, player_a, a_delta_if_move, a_delta_if_stay)
                 elif b_delta_if_stay == b_delta_if_move and b_delta_if_move > 0:
                     # print "Choose a random thing"
-                    actions = [move, invite]
+                    actions = [self.move, self.invite]
                     merged = choice(actions)(player_b, player_a, a_delta_if_move, a_delta_if_stay)
                 else:
                     # print "Not a good deal for B"
@@ -984,256 +1191,62 @@ class CollaborationModel:
             return False
 
 
-    def test_run(self):
-        print "Running variation {0}, with a {1} focus".format(variation, "community" if community_motivation else "self-interested")
-        self.players[1].joinTeam(self.teams[0])
-        self.players[5].joinTeam(self.teams[2])
-        # for i in self.players:
-        #     self.players[i].report()
-        print self.community.total()
-        self.variations[variation](self.players[0], self.players[2])
+    # Globalish invitation and moving algorithms
+    def invite(self, inviter, invitee, delta_if_move, delta_if_stay, objective_to_drop=None, objective_to_give=None):
+        if (objective_to_drop and objective_to_give):
+            raise Exception("Cannot pass `objective_to_drop` and `objective_to_give` at the same time.")
 
-        # for team in self.teams:
-        #     team.report()
-
-        # for i in self.players:
-        #     self.players[i].report()
-
-        print self.community.total()
-
-
-    def run(self, run_number):
-        rounds_without_merges = 0
-        total_merges = 0
-        total_encounters = 0
-        merges_this_round = 0
-
-        # print "Running variation {0} with a {1} focus".format(variation, "community" if community_motivation else "self-interested"), "\n"
-        
-        # # Temporary team reporting
-        # print "-----------------------------------------------------------------------------------------------------------------------"
-        # print "Initial player allocations:"
-        # print "-----------------------------------------------------------------------------------------------------------------------"
-        # for i in self.players:
-        #     self.players[i].report()
-        # print "-----------------------------------------------------------------------------------------------------------------------\n"
-        
-        # Data to capture before starting team merges
-        before_total = str(self.community.total())
-        individual_statistics_before = self.community.individualStats()
-
-        while True:
-            # Track how many team merges happen
-            total_merges += merges_this_round
-            merges_this_round = 0
-
-            players_list = range(len(self.players))  # Build list of player indexes
-            shuffle(players_list)  # ...and shuffle it
-
-            # Pair each index up at random... those two players then meet and run the appropriate algorithm
-            pairs_of_players = list(pairs(players_list))
-            shuffle(pairs_of_players)
-
-            for pair in pairs_of_players:
-                a = self.players[pair[0]]
-                b = self.players[pair[1]]
-
-                if a.team != b.team:  # If the players aren't already on the same team
-                    if self.variations[variation](a, b) == True:  # Run the specified variation
-                        merges_this_round += 1
-                    total_encounters += 1  # Update how many encounters occurred
-            
-            # If no merges happened this round, mark it
-            if merges_this_round == 0:
-                rounds_without_merges += 1
-            else:
-                rounds_without_merges = 0
-            
-            # If x rounds without merges happen, stop looping
-            if rounds_without_merges == faux_pareto_rounds_without_merges : break
-
-        #-----------------
-        # Data to export
-        #-----------------
-        team_statistics = self.community.teamStats()
-        individual_statistics_after = self.community.individualStats()
-        self.community.potentialTotal()
-
-        print "id:", run_number + 1
-        print "variation:", variation
-        print "player_count:", num_players
-        print "community_motivation", 1 if community_motivation else 0
-        print "encounters:", total_encounters
-        print "switches:", total_merges
-        print "switch_ratio:", total_merges / float(total_encounters) 
-
-        print "number_of_teams:", team_statistics.number
-        print "team_size_min:", team_statistics.min
-        print "team_size_max:", team_statistics.max
-        print "team_size_mean:", team_statistics.mean
-        print "team_size_median:", team_statistics.median
-
-        print "indiv_total_min_before:", individual_statistics_before.min
-        print "indiv_total_max_before:", individual_statistics_before.max
-        print "indiv_total_mean_before:", individual_statistics_before.mean
-        print "indiv_total_median_before:", individual_statistics_before.median
-
-        print "indiv_total_min_after:", individual_statistics_after.min
-        print "indiv_total_max_after:", individual_statistics_after.max
-        print "indiv_total_mean_after:", individual_statistics_after.mean
-        print "indiv_total_median_after:", individual_statistics_after.median
-
-        print "social_value_before:", before_total
-        print "social_value_after:", self.community.total()
-        print "potential_social_value:", self.community.potentialTotal()
-        print "unmet_social_value:", self.community.potentialTotal() - self.community.total()
-        print "percent_social_value_met:", self.community.total() / float(self.community.potentialTotal())
-
-        # a1_value
-        # a1_count
-        # a1_rare
-        # a1_trades
-        # a1_dropped
-        # a1_fulfilled
-        # a2_value
-
-        # print "-----------------------------------------------------------------------------------------------------------------------"
-        # print "Final team allocations:"
-        # print "-----------------------------------------------------------------------------------------------------------------------"
-        # for team in self.teams:
-        #     team.report()
-        # print "-----------------------------------------------------------------------------------------------------------------------"
-
-        # # Temporary team reporting
-        # print "\n-----------------------------------------------------------------------------------------------------------------------"
-        # print "Final player allocations:"
-        # print "-----------------------------------------------------------------------------------------------------------------------"
-        # for i in self.players:
-        #     self.players[i].report()
-        # print "-----------------------------------------------------------------------------------------------------------------------"
-
-        # print "\nTotal number of team switches: {0}".format(total_merges)
-        # print "Total community social value before playing: " + before_total
-        # print "Total community social value after playing: " + str(self.community.total())
-        if len(dropped_objectives) > 0:
-            print "Number of objectives dropped:", len(dropped_objectives)
-            print "Dropped objectives:", ', '.join('{0} ({1} pts)'.format(obj[0], obj[1]) for obj in dropped_objectives)
-        if len(traded_objectives) > 0:
-            print "Number of objectives traded:", len(traded_objectives)
-            print "Traded objectives:", ', '.join('{0} ({1} pts)'.format(obj[0], obj[1]) for obj in traded_objectives)
-        # print total_merges, ",", before_total, ",", str(self.community.total())
-            
-    
-    def largest_matching_team(self, team1, team2, team1_player, team2_player):
-        """Simple temporary algorithm for development. Players join the team with the largest number of matching resources. As a result, players congregrate to teams/networks of their own resorce."""
-        if team1_player.resource == team2_player.resource:  
-            if team1.playerCount() > team2.playerCount():
-                team2_player.joinTeam(team1)
-            else:
-                team1_player.joinTeam(team2)
+        # print "{0} inviting {1}".format(inviter.name, invitee.name)
+        if delta_if_move >= 0 and delta_if_move > delta_if_stay:
+            # print "This is the ideal situation. Permission granted."
+            if objective_to_drop:
+                inviter.dropObjective(objective_to_drop, dropped_objectives_list=self.dropped_objectives)
+            if objective_to_give:
+                inviter.giveObjective(objective_to_give, invitee, traded_objectives_list=self.traded_objectives)
+            invitee.joinTeam(invitee.team)
             return True
-    
-    def createTeams(self):
-        self.teams = []
-        for i, player in enumerate(self.players.values()):
-            startingTeam = Team(i)
-            startingTeam.addPlayer(player)
-            self.teams.append(startingTeam)
-            self.players[i].setInitialTeam(startingTeam)
-    
-    def build(self):
-        # Initialize empty players dictionary (only a dictionary so it can be indexed)
-        players = {}
+        elif delta_if_stay >= 0 and delta_if_stay > delta_if_move:
+            # print "It's better if the invitee stays... " 
+            return False
+        elif delta_if_move == delta_if_stay and delta_if_move > 0:
+            # print "It doesn't matter to the invitee. Permission granted."
+            if objective_to_drop:
+                inviter.dropObjective(objective_to_drop, dropped_objectives_list=self.dropped_objectives)
+            if objective_to_give:
+                inviter.giveObjective(objective_to_give, invitee, traded_objectives_list=self.traded_objectives)
+            invitee.joinTeam(invitee.team)
+            return True
+        else:
+            # print "Permission denied"
+            return False
 
-        # Build the players list and index of objectives
-        players_list = range(num_players)
-        objs_index = range(objective_pool.num_objs)
-        # print(resource_pool.pool)
-        # print(objective_pool.pool)
+    def move(self, asker, asked, delta_if_move, delta_if_stay, objective_to_drop=None, objective_to_give=None):
+        if (objective_to_drop and objective_to_give):
+            raise Exception("Cannot pass `objective_to_drop` and `objective_to_give` at the same time.")
 
-        # Shuffle the lists if shuffling is enabled
-        if shuffling == True:
-            shuffle(players_list)
-            shuffle(objs_index)
-
-        # `count` keeps track of the number of times a resource is allocated to a player. It will only ever go up to `num_players`
-        count = 0
-
-        # Initialize starting and stopping variables for slicing the objectives list
-        start = 0
-        stop = num_objs_per_player
-        
-        # Loop through the resource and objective pools and assign resources and objectives to each player. 
-        # Player numbers are assigned using `count` as an index to `combined`
-        for resource, quantity in sorted(resource_pool.pool.items()):
-            for i in range(quantity):
-                # Create a new player and add it to the players dictionary
-                players[players_list[count]] = Player(name="Player %02d"%players_list[count], resource=resource, objectives=objs_index[start:stop:1], sim=self)
-
-                # Increment everything
-                count += 1
-                start += num_objs_per_player
-                stop += num_objs_per_player
-        
-        self.players = players
-
-
-# Globalish invitation and moving algorithms
-def invite(inviter, invitee, delta_if_move, delta_if_stay, objective_to_drop=None, objective_to_give=None):
-    if (objective_to_drop and objective_to_give):
-        raise Exception("Cannot pass `objective_to_drop` and `objective_to_give` at the same time.")
-
-    # print "{0} inviting {1}".format(inviter.name, invitee.name)
-    if delta_if_move >= 0 and delta_if_move > delta_if_stay:
-        # print "This is the ideal situation. Permission granted."
-        if objective_to_drop:
-            inviter.dropObjective(objective_to_drop)
-        if objective_to_give:
-            inviter.giveObjective(objective_to_give, invitee)
-        invitee.joinTeam(invitee.team)
-        return True
-    elif delta_if_stay >= 0 and delta_if_stay > delta_if_move:
-        # print "It's better if the invitee stays... " 
-        return False
-    elif delta_if_move == delta_if_stay and delta_if_move > 0:
-        # print "It doesn't matter to the invitee. Permission granted."
-        if objective_to_drop:
-            inviter.dropObjective(objective_to_drop)
-        if objective_to_give:
-            inviter.giveObjective(objective_to_give, invitee)
-        invitee.joinTeam(invitee.team)
-        return True
-    else:
-        # print "Permission denied"
-        return False
-
-def move(asker, asked, delta_if_move, delta_if_stay, objective_to_drop=None, objective_to_give=None):
-    if (objective_to_drop and objective_to_give):
-        raise Exception("Cannot pass `objective_to_drop` and `objective_to_give` at the same time.")
-
-    # print "{0} trying to join {1}".format(asker.name, asked.name)
-    if delta_if_stay > 0 and delta_if_stay > delta_if_move:
-        # print "This is the ideal situation. Permission granted."
-        if objective_to_drop:
-            asker.dropObjective(objective_to_drop)
-        if objective_to_give:
-            asker.giveObjective(objective_to_give, asked)
-        asker.joinTeam(asked.team)
-        return True
-    elif delta_if_move > 0 and delta_if_move > delta_if_stay:
-        # print "It's better if the asked moves... "
-        return False
-    elif delta_if_stay == delta_if_move and delta_if_stay > 0:
-        # print "It doesn't matter to the asked. Permission granted."
-        if objective_to_drop:
-            asker.dropObjective(objective_to_drop)
-        if objective_to_give:
-            asker.giveObjective(objective_to_give, asked)
-        asker.joinTeam(asked.team)
-        return True
-    else:
-        # print "Permission denied"
-        return False
+        # print "{0} trying to join {1}".format(asker.name, asked.name)
+        if delta_if_stay > 0 and delta_if_stay > delta_if_move:
+            # print "This is the ideal situation. Permission granted."
+            if objective_to_drop:
+                asker.dropObjective(objective_to_drop, dropped_objectives_list=self.dropped_objectives)
+            if objective_to_give:
+                asker.giveObjective(objective_to_give, asked, traded_objectives_list=self.traded_objectives)
+            asker.joinTeam(asked.team)
+            return True
+        elif delta_if_move > 0 and delta_if_move > delta_if_stay:
+            # print "It's better if the asked moves... "
+            return False
+        elif delta_if_stay == delta_if_move and delta_if_stay > 0:
+            # print "It doesn't matter to the asked. Permission granted."
+            if objective_to_drop:
+                asker.dropObjective(objective_to_drop, dropped_objectives_list=self.dropped_objectives)
+            if objective_to_give:
+                asker.giveObjective(objective_to_give, asked, traded_objectives_list=self.traded_objectives)
+            asker.joinTeam(asked.team)
+            return True
+        else:
+            # print "Permission denied"
+            return False
 
 
 # Important mini functions
@@ -1295,45 +1308,9 @@ def printObjectivesPool():
 #------------------------------
 
 for i in xrange(times_to_run_simulation):
-    # Create the global resource and objective pools 
-    resource_pool = ResourcePool(num_resources, num_players)
-    objective_pool = ObjectivePool(resource_pool)
-    objs_table = objective_pool.table
-    dropped_objectives = []
-    traded_objectives = []
-    # TODO: Keep track of traded objectives too
-
     # Run the simulation
     # CollaborationModel().test_run()
     CollaborationModel().run(i)
 
-    # TODO: Export these things to CSV:
-    # id
-    # player_count
-    # social_motivation
-    # encounters
-    # switches
-    # switches_to_bumps
-    # individual_total_mean
-    # individual_total_median
-    # number_of_teams
-    # team_size_min
-    # team_size_max
-    # team_size_median
-    # team_size_mean
-    # social_value_before
-    # social_value_after
-    # potential_social_value
-    # unmet_social_value
-    # a1_value
-    # a1_count
-    # a1_rare
-    # a1_trades
-    # a1_dropped
-    # a1_fulfilled
-    # a2_value
-    # ...
-
     # MAYBE: Export a text-based version of a single run
     # MAYBE: Use RPy to build fancy ggplot graphs automatically
-
