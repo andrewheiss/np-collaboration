@@ -61,6 +61,7 @@ class ResourcePool:
     Attributes:
         high: A string of the high frequency resources (e.g. "AB")
         low: A string of the low frequency resources (e.g. "CD")
+        resources_list: A list of tuples (e.g. [('A', 'high_freq'), ('B', 'high_freq'), ('C', 'low_freq'), ('D', 'low_freq')])
         pool: A dictionary structured like {'resource name': quantity, ...}
     
     Returns: 
@@ -76,6 +77,16 @@ class ResourcePool:
         divided = self.divide_high_low(resources)
         self.high = divided.high
         self.low = divided.low
+
+        resources_list = []
+        for resource in list(divided.high):
+            resources_list.append((resource, "high_freq"))
+
+        for resource in list(divided.low):
+            resources_list.append((resource, "low_freq"))
+
+        self.resources_list = sorted(resources_list)
+
         r = self.create_distribution_ratios(divided.low, divided.high)
         self.pool = dict(sorted(Counter(islice(r, players)).items()))
 
@@ -169,6 +180,7 @@ class ObjectivePool:
 
         # Create a list of named dictionary pairs for each objective in the pool
         objs_table = []
+        objs_list = []
         for i in self.pool.items():
             for j in range(i[1]):
                 if int(i[0][1]) == 1: # if the objective's subscript is 1 (e.g. "a1")
@@ -176,7 +188,9 @@ class ObjectivePool:
                 else:
                     value = value_low
                 objs_table.append({'name':i[0], 'value':value})
+                objs_list.append([i[0], value])
         self.table = objs_table
+        self.obj_list = objs_list
 
     def create_distribution_ratios(self, prop_low, prop_high):
         """Add a fraction priority to the given high frequency resources
@@ -224,6 +238,19 @@ class Community:
 
     def potentialTotal(self, objectives_table):
         return sum(objective['value'] for objective in objectives_table)
+
+    def objectivesSubset(self):
+        ObjectivesSubset = namedtuple('ObjectivesSubset', 'fulfilled, unfulfilled')
+
+        fulfilled = []
+        unfulfilled = []
+
+        for player in self.players:
+            player_subset = self.players[player].objectivesSubset()
+            fulfilled += player_subset.fulfilled
+            unfulfilled += player_subset.unfulfilled
+
+        return ObjectivesSubset(fulfilled, unfulfilled)
 
 
 class Team:
@@ -373,6 +400,23 @@ class Player:
                 if resource == details[0][0].upper():
                     total += details[1]
         return total
+
+    def objectivesSubset(self, fulfilled=True):
+        resources = self.team.resources()
+        objectives = self.objectives
+
+        ObjectivesSubset = namedtuple('ObjectivesSubset', 'fulfilled, unfulfilled')
+
+        met = {}
+        for index, details in objectives.items():
+            for resource in resources:
+                if resource == details[0][0].upper():
+                    met[index] = details
+
+        unfulfilled_indexes = [objective for objective in objectives if objective not in met]
+        unmet = {i : objectives[i] for i in unfulfilled_indexes}  # Dictionary comprehension!
+
+        return ObjectivesSubset(met.values(), unmet.values())
     
     def dropObjective(self, objective_to_drop, dropped_objectives_list):
         """Drop an objective, moving it to the global `dropped_objectives` dictionary of lists"""
@@ -467,15 +511,15 @@ class CollaborationModel:
         self.traded_objectives = []
 
     def build(self):
-        resource_pool = ResourcePool(num_resources, num_players)
-        objective_pool = ObjectivePool(resource_pool)
-        self.objs_table = objective_pool.table
+        self.resource_pool = ResourcePool(num_resources, num_players)
+        self.objective_pool = ObjectivePool(self.resource_pool)
+        self.objs_table = self.objective_pool.table
         # Initialize empty players dictionary (only a dictionary so it can be indexed)
         players = {}
 
         # Build the players list and index of objectives
         players_list = range(num_players)
-        objs_index = range(objective_pool.num_objs)
+        objs_index = range(self.objective_pool.num_objs)
         # print(resource_pool.pool)
         # print(objective_pool.pool)
 
@@ -493,7 +537,7 @@ class CollaborationModel:
         
         # Loop through the resource and objective pools and assign resources and objectives to each player. 
         # Player numbers are assigned using `count` as an index to `combined`
-        for resource, quantity in sorted(resource_pool.pool.items()):
+        for resource, quantity in sorted(self.resource_pool.pool.items()):
             for i in range(quantity):
                 # Create a new player and add it to the players dictionary
                 players[players_list[count]] = Player(name="Player %02d"%players_list[count], resource=resource, objectives=objs_index[start:stop:1], sim=self, objectives_table=self.objs_table)
@@ -588,6 +632,7 @@ class CollaborationModel:
         #-----------------
         team_statistics = self.community.teamStats()
         individual_statistics_after = self.community.individualStats()
+        subset = self.community.objectivesSubset()
 
         # TODO: Export these things to CSV:
         print "id:", run_number + 1
