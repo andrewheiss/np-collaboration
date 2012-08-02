@@ -668,13 +668,83 @@ class CollaborationModel:
         print "unmet_social_value:", self.community.potentialTotal(self.objs_table) - self.community.total()
         print "percent_social_value_met:", self.community.total() / float(self.community.potentialTotal(self.objs_table))
 
-        # a1_value
-        # a1_count
-        # a1_high_freq
-        # a1_trades
-        # a1_dropped
-        # a1_fulfilled
-        # a2_value
+        print "num_objectives:", len(self.objective_pool.table)
+        print "objs_fulfilled:", len(subset.fulfilled)
+        print "objs_held_unfulfilled:", len(subset.unfulfilled)
+        print "objs_dropped:", len(self.dropped_objectives)
+        print "objs_traded:", len(self.traded_objectives)
+        print "objs_fulfilled_ratio:", len(subset.fulfilled) / float(len(self.objective_pool.table))
+        print "objs_unfulfilled_ratio:", (len(subset.unfulfilled) + len(self.dropped_objectives)) / float(len(self.objective_pool.table))
+
+        for resource in self.resource_pool.resources_list:
+            # Variable names
+            high_value_objective = resource[0].lower() + str(1)
+            low_value_objective = resource[0].lower() + str(2)
+
+            # Initialize count variables
+            fulfilled_count_high = 0
+            unfulfilled_count_high = 0
+            dropped_count_high = 0
+            traded_count_high = 0
+            obj_count_high = 0
+            fulfilled_count_low = 0
+            unfulfilled_count_low = 0
+            dropped_count_low = 0
+            traded_count_low = 0
+            obj_count_low = 0
+
+            for obj in self.objective_pool.obj_list:
+                if resource[0] == obj[0][0].upper():
+                    if obj[1] == value_high: 
+                        obj_count_high += 1 
+                    else:
+                        obj_count_low += 1
+
+            for obj in subset.fulfilled:
+                if resource[0] == obj[0][0].upper():
+                    if obj[1] == value_high: 
+                        fulfilled_count_high += 1 
+                    else:
+                        fulfilled_count_low += 1
+
+            for obj in subset.unfulfilled: 
+                if resource[0] == obj[0][0].upper():
+                    if obj[1] == value_high: 
+                        unfulfilled_count_high += 1 
+                    else:
+                        unfulfilled_count_low += 1
+
+            for obj in self.dropped_objectives:
+                if resource[0] == obj[0][0].upper():
+                    if obj[1] == value_high: 
+                        dropped_count_high += 1 
+                    else:
+                        dropped_count_low += 1
+
+            for obj in self.traded_objectives: 
+                if resource[0] == obj[0][0].upper():
+                    if obj[1] == value_high: 
+                        traded_count_high += 1 
+                    else:
+                        traded_count_low += 1
+
+            # Print out everything
+            print "{0}_value:".format(high_value_objective), value_high
+            print "{0}_count:".format(high_value_objective), obj_count_high
+            print "{0}_high_freq:".format(high_value_objective), 1 if resource[1] == "high_freq" else 0
+            print "{0}_trades:".format(high_value_objective), traded_count_high
+            print "{0}_dropped:".format(high_value_objective), dropped_count_high
+            print "{0}_fulfilled:".format(high_value_objective), fulfilled_count_high
+            print "{0}_held_unfulfilled:".format(high_value_objective), unfulfilled_count_high
+
+            print "{0}_value:".format(low_value_objective), value_low
+            print "{0}_count:".format(low_value_objective), obj_count_low
+            print "{0}_high_freq:".format(low_value_objective), 1 if resource[1] == "high_freq" else 0
+            print "{0}_trades:".format(low_value_objective), traded_count_low
+            print "{0}_dropped:".format(low_value_objective), dropped_count_low
+            print "{0}_fulfilled:".format(low_value_objective), fulfilled_count_low
+            print "{0}_held_unfulfilled:".format(low_value_objective), unfulfilled_count_low
+
 
         # print "-----------------------------------------------------------------------------------------------------------------------"
         # print "Final team allocations:"
@@ -690,17 +760,6 @@ class CollaborationModel:
         # for i in self.players:
         #     self.players[i].report()
         # print "-----------------------------------------------------------------------------------------------------------------------"
-
-        # print "\nTotal number of team switches: {0}".format(total_merges)
-        # print "Total community social value before playing: " + before_total
-        # print "Total community social value after playing: " + str(self.community.total())
-        if len(self.dropped_objectives) > 0:
-            print "Number of objectives dropped:", len(self.dropped_objectives)
-            print "Dropped objectives:", ', '.join('{0} ({1} pts)'.format(obj[0], obj[1]) for obj in self.dropped_objectives)
-        if len(self.traded_objectives) > 0:
-            print "Number of objectives traded:", len(self.traded_objectives)
-            print "Traded objectives:", ', '.join('{0} ({1} pts)'.format(obj[0], obj[1]) for obj in self.traded_objectives)
-        # print total_merges, ",", before_total, ",", str(self.community.total())
 
 
     #--------------------------------------------------------------------------
