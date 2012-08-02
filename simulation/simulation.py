@@ -30,7 +30,7 @@ approximate_high_low_objective_ratio = 3
 faux_pareto_rounds_without_merges = 25
 variation = 1  # Must be 1, 2, 3, or 4
 community_motivation = True  # Set to True to have everyone work for community value instead of personal value
-times_to_run_simulation = 1
+times_to_run_simulation = 50
 # seed(4567890)
 
 # Turn on random allocation
@@ -1419,10 +1419,15 @@ def printObjectivesPool():
 # Create CSV file
 csv_out = csv.writer(open("simulation.csv","w"), delimiter=',',quoting=csv.QUOTE_ALL)
 
+# Run the simulation
+community_motivation = False
 for i in xrange(times_to_run_simulation):
-    # Run the simulation
     # CollaborationModel().test_run()
     CollaborationModel().run(i)
+
+community_motivation = True
+for i in xrange(times_to_run_simulation):
+    CollaborationModel().run(i + times_to_run_simulation)
 
     # MAYBE: Export a text-based version of a single run
     # MAYBE: Use RPy to build fancy ggplot graphs automatically
