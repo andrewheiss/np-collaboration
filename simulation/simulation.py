@@ -14,6 +14,7 @@ from itertools import islice
 from string import ascii_uppercase
 from random import shuffle, sample, seed, choice
 from copy import deepcopy
+import csv
 
 #------------------------
 # Set up the simulation
@@ -635,46 +636,48 @@ class CollaborationModel:
         subset = self.community.objectivesSubset()
 
         # TODO: Export these things to CSV:
-        print "id:", run_number + 1
-        print "variation:", variation
-        print "player_count:", num_players
-        print "community_motivation", 1 if community_motivation else 0
-        print "encounters:", total_encounters
-        print "switches:", total_merges
-        print "switch_ratio:", total_merges / float(total_encounters) 
+        csv_data = []
 
-        print "number_of_teams:", team_statistics.number
-        print "team_size_min:", team_statistics.min
-        print "team_size_max:", team_statistics.max
-        print "team_size_mean:", team_statistics.mean
-        print "team_size_median:", team_statistics.median
+        csv_data.append(("id", run_number + 1))
+        csv_data.append(("variation", variation))
+        csv_data.append(("player_count", num_players))
+        csv_data.append(("community_motivation", 1 if community_motivation else 0))
+        csv_data.append(("encounters", total_encounters))
+        csv_data.append(("switches", total_merges))
+        csv_data.append(("switch_ratio", total_merges / float(total_encounters)))
 
-        print "indiv_total_min_before:", individual_statistics_before.min
-        print "indiv_total_max_before:", individual_statistics_before.max
-        print "indiv_total_mean_before:", individual_statistics_before.mean
-        print "indiv_total_median_before:", individual_statistics_before.median
+        csv_data.append(("number_of_teams", team_statistics.number))
+        csv_data.append(("team_size_min", team_statistics.min))
+        csv_data.append(("team_size_max", team_statistics.max))
+        csv_data.append(("team_size_mean", team_statistics.mean))
+        csv_data.append(("team_size_median", team_statistics.median))
 
-        print "indiv_total_min_after:", individual_statistics_after.min
-        print "indiv_total_max_after:", individual_statistics_after.max
-        print "indiv_total_mean_after:", individual_statistics_after.mean
-        print "indiv_total_median_after:", individual_statistics_after.median
+        csv_data.append(("indiv_total_min_before", individual_statistics_before.min))
+        csv_data.append(("indiv_total_max_before", individual_statistics_before.max))
+        csv_data.append(("indiv_total_mean_before", individual_statistics_before.mean))
+        csv_data.append(("indiv_total_median_before", individual_statistics_before.median))
 
-        print "indiv_delta_mean:", individual_statistics_after.mean - individual_statistics_before.mean
-        print "indiv_delta_median:", individual_statistics_after.median - individual_statistics_before.median
+        csv_data.append(("indiv_total_min_after", individual_statistics_after.min))
+        csv_data.append(("indiv_total_max_after", individual_statistics_after.max))
+        csv_data.append(("indiv_total_mean_after", individual_statistics_after.mean))
+        csv_data.append(("indiv_total_median_after", individual_statistics_after.median))
 
-        print "social_value_before:", before_total
-        print "social_value_after:", self.community.total()
-        print "potential_social_value:", self.community.potentialTotal(self.objs_table)
-        print "unmet_social_value:", self.community.potentialTotal(self.objs_table) - self.community.total()
-        print "percent_social_value_met:", self.community.total() / float(self.community.potentialTotal(self.objs_table))
+        csv_data.append(("indiv_delta_mean", individual_statistics_after.mean - individual_statistics_before.mean))
+        csv_data.append(("indiv_delta_median", individual_statistics_after.median - individual_statistics_before.median))
 
-        print "num_objectives:", len(self.objective_pool.table)
-        print "objs_fulfilled:", len(subset.fulfilled)
-        print "objs_held_unfulfilled:", len(subset.unfulfilled)
-        print "objs_dropped:", len(self.dropped_objectives)
-        print "objs_traded:", len(self.traded_objectives)
-        print "objs_fulfilled_ratio:", len(subset.fulfilled) / float(len(self.objective_pool.table))
-        print "objs_unfulfilled_ratio:", (len(subset.unfulfilled) + len(self.dropped_objectives)) / float(len(self.objective_pool.table))
+        csv_data.append(("social_value_before", before_total))
+        csv_data.append(("social_value_after", self.community.total()))
+        csv_data.append(("potential_social_value", self.community.potentialTotal(self.objs_table)))
+        csv_data.append(("unmet_social_value", self.community.potentialTotal(self.objs_table) - self.community.total()))
+        csv_data.append(("percent_social_value_met", self.community.total() / float(self.community.potentialTotal(self.objs_table))))
+
+        csv_data.append(("num_objectives", len(self.objective_pool.table)))
+        csv_data.append(("objs_fulfilled", len(subset.fulfilled)))
+        csv_data.append(("objs_held_unfulfilled", len(subset.unfulfilled)))
+        csv_data.append(("objs_dropped", len(self.dropped_objectives)))
+        csv_data.append(("objs_traded", len(self.traded_objectives)))
+        csv_data.append(("objs_fulfilled_ratio", len(subset.fulfilled) / float(len(self.objective_pool.table))))
+        csv_data.append(("objs_unfulfilled_ratio", (len(subset.unfulfilled) + len(self.dropped_objectives)) / float(len(self.objective_pool.table))))
 
         for resource in self.resource_pool.resources_list:
             # Variable names
@@ -729,21 +732,24 @@ class CollaborationModel:
                         traded_count_low += 1
 
             # Print out everything
-            print "{0}_value:".format(high_value_objective), value_high
-            print "{0}_count:".format(high_value_objective), obj_count_high
-            print "{0}_high_freq:".format(high_value_objective), 1 if resource[1] == "high_freq" else 0
-            print "{0}_trades:".format(high_value_objective), traded_count_high
-            print "{0}_dropped:".format(high_value_objective), dropped_count_high
-            print "{0}_fulfilled:".format(high_value_objective), fulfilled_count_high
-            print "{0}_held_unfulfilled:".format(high_value_objective), unfulfilled_count_high
+            csv_data.append(("{0}_value".format(high_value_objective), value_high))
+            csv_data.append(("{0}_count".format(high_value_objective), obj_count_high))
+            csv_data.append(("{0}_high_freq".format(high_value_objective), 1 if resource[1] == "high_freq" else 0))
+            csv_data.append(("{0}_trades".format(high_value_objective), traded_count_high))
+            csv_data.append(("{0}_dropped".format(high_value_objective), dropped_count_high))
+            csv_data.append(("{0}_fulfilled".format(high_value_objective), fulfilled_count_high))
+            csv_data.append(("{0}_held_unfulfilled".format(high_value_objective), unfulfilled_count_high))
 
-            print "{0}_value:".format(low_value_objective), value_low
-            print "{0}_count:".format(low_value_objective), obj_count_low
-            print "{0}_high_freq:".format(low_value_objective), 1 if resource[1] == "high_freq" else 0
-            print "{0}_trades:".format(low_value_objective), traded_count_low
-            print "{0}_dropped:".format(low_value_objective), dropped_count_low
-            print "{0}_fulfilled:".format(low_value_objective), fulfilled_count_low
-            print "{0}_held_unfulfilled:".format(low_value_objective), unfulfilled_count_low
+            csv_data.append(("{0}_value".format(low_value_objective), value_low))
+            csv_data.append(("{0}_count".format(low_value_objective), obj_count_low))
+            csv_data.append(("{0}_high_freq".format(low_value_objective), 1 if resource[1] == "high_freq" else 0))
+            csv_data.append(("{0}_trades".format(low_value_objective), traded_count_low))
+            csv_data.append(("{0}_dropped".format(low_value_objective), dropped_count_low))
+            csv_data.append(("{0}_fulfilled".format(low_value_objective), fulfilled_count_low))
+            csv_data.append(("{0}_held_unfulfilled".format(low_value_objective), unfulfilled_count_low))
+ 
+        if run_number == 0 : csv_out.writerow([data[0] for data in csv_data])  # Output headers on the first run
+        csv_out.writerow([data[1] for data in csv_data])  # Output the data
 
 
         # print "-----------------------------------------------------------------------------------------------------------------------"
@@ -1410,6 +1416,8 @@ def printObjectivesPool():
 #------------------------------
 # Actual simulation procedure
 #------------------------------
+# Create CSV file
+csv_out = csv.writer(open("simulation.csv","w"), delimiter=',',quoting=csv.QUOTE_ALL)
 
 for i in xrange(times_to_run_simulation):
     # Run the simulation
