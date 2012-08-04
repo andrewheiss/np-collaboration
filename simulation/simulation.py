@@ -30,7 +30,7 @@ approximate_high_low_objective_ratio = 3
 faux_pareto_rounds_without_merges = 25
 variation = 1  # Must be 1, 2, 3, or 4
 community_motivation = True  # Set to True to have everyone work for community value instead of personal value
-times_to_run_simulation = 50
+times_to_run_simulation = 1
 # seed(4567890)
 
 # Turn on random allocation
@@ -137,7 +137,7 @@ class ObjectivePool:
     
     Attributes:
         num_objs: The total number of objectives in the pool (number of players * number of objectives per player)
-        pool: A dictionary of objective distriubtions (e.g. {'a1': 15, 'a2': 15, 'b1': 5, 'b2': 5, 'c2': 15, 'c1': 15, 'd2': 5, 'd1': 5})
+        pool: A dictionary of objective distributions (e.g. {'a1': 15, 'a2': 15, 'b1': 5, 'b2': 5, 'c2': 15, 'c1': 15, 'd2': 5, 'd1': 5})
         table: A list of dictionaries with each objective name and value (e.g. [{'name': 'a1', 'value': 20},... {'name': 'c2', 'value': 10},...])
     
     Returns: 
@@ -209,43 +209,85 @@ class ObjectivePool:
 
 
 class Community:
-    """docstring for Community"""
+    """A community contains all the players and teams involved in a simulation. 
+
+    The object also provides functions for retrieving statistics about the community.
+
+    Attributes:
+        players: A dictionary of the player objects provided at initialization
+        teams: A list of the team objects provided at initialization
+    
+    Returns: 
+        A new community object
+    """
     def __init__(self, players, teams):
+        """
+        Initialize community object with given players and teams.
+
+        Args:
+            players: A dictionary of player objects to be added to the community (generated in CollaborationModel::build())
+            teams: A list of team objects to be added to the community (also generated in CollaborationModel::build())
+        """
         self.players = players
         self.teams = teams
     
     def total(self):
-        """docstring for globalTotal"""
+        """Returns the combined values of all teams in the community, or the current social value of the community."""
         total = 0
         for i, player in self.players.items():
             total += player.currentTotal()
         return total
 
     def activeTeams(self):
+        """Returns a list of all teams in the community that have at least one player."""
         return [ team for team in self.teams if team.playerCount() > 0 ]
 
     def last_team_index(self):
+        """Returns the index of the last team in the community.
+
+        Used in variation 4 of the simulation, where new teams of two players are added to the community. 
+        Those teams use the next sequential team index when created.
+        """
         return self.teams[-1].index
 
     def teamStats(self):
+        """Calculate basic summary statistics for the teams in the community.
+
+        Returns a named tuple of class 'TeamStatistics' with attributes number, min, max, mean, and median.
+        """
         team_sizes = [ team.playerCount() for team in self.activeTeams() ]
         TeamStatistics = namedtuple('TeamStatistics', 'number, min, max, mean, median')
         return TeamStatistics(len(team_sizes), min(team_sizes), max(team_sizes), mean(team_sizes), median(team_sizes))
 
     def individualStats(self):
+        """Calculate basic summary statistics for the players in the community.
+
+        Returns a named tuple of class 'IndividualStatistics' with attributes number, min, max, mean, and median.
+        """
         player_scores = [player.currentTotal() for i, player in self.players.items() ]
         IndividualStatistics = namedtuple('IndividualStatistics', 'min, max, mean, median')
         return IndividualStatistics(min(player_scores), max(player_scores), mean(player_scores), median(player_scores))
 
     def potentialTotal(self, objectives_table):
+        """Returns the potential total community social value given the objectives available in the simulation.
+
+        Args: 
+            objectives_table: List of dictionaries of objectives in an ObjectivePool() object (e.g. [{'name': 'a1', 'value': 20},... {'name': 'c2', 'value': 10},...])
+        """
         return sum(objective['value'] for objective in objectives_table)
 
     def objectivesSubset(self):
-        ObjectivesSubset = namedtuple('ObjectivesSubset', 'fulfilled, unfulfilled')
+        """Determines which of the objectives in the community have been fulfilled (i.e. the player holding the objective has access to a matching resource in their team).
 
+        Player.objectivesSubset() returns a named tuple of a player's fulfilled and unfulfilled objectives. This method loops through all the players on the team and makes comprehensive lists of all players' fulfilled and unfulfilled objectives. 
+
+        Returns a named tuple of class 'ObjectivesSubset' with attributes fulfilled and unfulfilled.
+        """
+        ObjectivesSubset = namedtuple('ObjectivesSubset', 'fulfilled, unfulfilled')
         fulfilled = []
         unfulfilled = []
 
+        # Loop through all the players and separate their objectives into fulfilled and unfulfilled lists
         for player in self.players:
             player_subset = self.players[player].objectivesSubset()
             fulfilled += player_subset.fulfilled
@@ -259,41 +301,40 @@ class Team:
     
     Attributes:
         name: The team's name
+        index: The index of the team (zero-based)
         players: A list of player objects that are part of the team
     
     Returns:
         A new team object
     """
     def __init__(self, index):
-        """Creates a new team object
-        
-        Creates a new team consisting of exactly one player
+        """Creates a new team object consisting of exactly one player.
         
         Args:
             name: The player's name
             player: A single player object
-        
-        Raises:
-            No errors yet... 
         """
         self.name = "Team %02d"%index 
         self.index = index
         self.players = []
-        # self.players.append(player)
     
     def playerCount(self):
-        """Count how many players there are."""
+        """Returns a count how many players there are on the team."""
         return len(self.players)
     
     def resources(self):
-        """Find all the resources in the team and return a list of unique resource values"""
+        """Returns a list of all unique resources available on the team."""
         resources = []
         for player in self.players:
             resources.append(player.resource)
         return uniquify(resources)
     
     def totalValue(self, newPlayer=None):
-        """Calculates a team's total score"""
+        """Returns a team's current value.
+
+        Args:
+            newPlayer: Optionally pass a player object to calculate the team's value with that player on the team
+        """
         if newPlayer is None:   # If no new hypothetical player is specified, use the regular team players
             players = self.players
         else:   # Otherwise, temporarily add the extra player to a copy of the team
@@ -306,6 +347,10 @@ class Team:
         return total
     
     def report(self):
+        """Pretty prints a sentence explaining the team's current standing.
+
+        For example, "We are Team 02; we have Player 02, Player 05 on our team; we have resources ['D', 'C']; and our total social value is 60."
+        """
         if self.players:
             players = ', '.join('%s' % player.name for player in self.players)
             print "We are %s; we have %s on our team; we have resources %s; and our total social value is %s."%(self.name, players, self.resources(), self.totalValue())
@@ -313,36 +358,34 @@ class Team:
             print "%s is empty." % (self.name)
     
     def addPlayer(self, player):
+        """Adds a given player object to the team."""
         self.players.append(player)
     
     def removePlayer(self, player):
+        """Removes a given player object from the team."""
         self.players.remove(player)
 
 
 class Player:
-    """A player is the primary element of the simulation and is responsible for maximizing its personal or societal value by trading objectives with other players
+    """A player is the primary element of the simulation and is responsible for maximizing its personal or societal value by trading objectives with other players.
     
     Attributes:
         name: The player's name
         resource: The name of a resource (i.e. "A")
-        objectives: A dictionary of lists, correposnding to the objective index, objective name, and objective value. (i.e. {0: ['a1', 20], 1: ['a1', 20], 2: ['a1', 20], 3: ['a1', 20], 4: ['a1', 20]})
+        objectives: A dictionary of lists, corresponding to the objective index, objective name, and objective value. (i.e. {0: ['a1', 20], 1: ['d1', 20], 2: ['a2', 10], 3: ['b2', 10], 4: ['c1', 20]})
     
     Returns:
         A new player object
     """
 
-    def __init__(self, sim, name, resource, objectives, objectives_table):
-        """Creates a new Player object
-        
-        Creates a player based on resources and objectives created beforehand (i.e. players should be created as part of a loop that allocates resources and objectives).
+    def __init__(self, name, resource, objective_indices, objectives_table):
+        """Creates a new player object based on resource and objective pools created beforehand.
         
         Args:
             name: The player's name
             resource: The name of a resource (i.e. "A")
-            objectives: A list of objective indicies (i.e. [1, 2, 3, 4, 5])
-        
-        Raises:
-            No errors yet... I should probably build some sort of error handling eventually...
+            objective_indices: A list of objective indices (i.e. [1, 2, 3, 4, 5])
+            objectives_table: List of dictionaries of objectives in an ObjectivePool() object (e.g. [{'name': 'a1', 'value': 20},... {'name': 'c2', 'value': 10},...])
         """
         self.name = name
         self.resource = resource
@@ -350,7 +393,7 @@ class Player:
         # Build the dictionary of lists
         # {`index`: [`objective name`, `objective value`]}
         self.objectives = {}
-        for i in objectives:
+        for i in objective_indices:
             self.objectives[i] = [objectives_table[i]['name'], objectives_table[i]['value']]
 
     def currentTotal(self, test_object=None, object_is_team=True, new_team=False, alone=False, objective_to_drop=None, given_objective=None, giver=None):
@@ -541,7 +584,7 @@ class CollaborationModel:
         for resource, quantity in sorted(self.resource_pool.pool.items()):
             for i in range(quantity):
                 # Create a new player and add it to the players dictionary
-                players[players_list[count]] = Player(name="Player %02d"%players_list[count], resource=resource, objectives=objs_index[start:stop:1], sim=self, objectives_table=self.objs_table)
+                players[players_list[count]] = Player(name="Player %02d"%players_list[count], resource=resource, objective_indices=objs_index[start:stop:1], objectives_table=self.objs_table)
 
                 # Increment everything
                 count += 1
@@ -564,6 +607,7 @@ class CollaborationModel:
         print "Running variation {0}, with a {1} focus".format(variation, "community" if community_motivation else "self-interested")
         self.players[1].joinTeam(self.teams[0])
         self.players[5].joinTeam(self.teams[2])
+        self.teams[2].report()
         # for i in self.players:
         #     self.players[i].report()
         print self.community.total()
@@ -1417,17 +1461,17 @@ def printObjectivesPool():
 # Actual simulation procedure
 #------------------------------
 # Create CSV file
-csv_out = csv.writer(open("simulation.csv","w"), delimiter=',',quoting=csv.QUOTE_ALL)
+# csv_out = csv.writer(open("simulation.csv","w"), delimiter=',',quoting=csv.QUOTE_ALL)
 
 # Run the simulation
 community_motivation = False
 for i in xrange(times_to_run_simulation):
-    # CollaborationModel().test_run()
-    CollaborationModel().run(i)
+    CollaborationModel().test_run()
+    # CollaborationModel().run(i)
 
-community_motivation = True
-for i in xrange(times_to_run_simulation):
-    CollaborationModel().run(i + times_to_run_simulation)
+# community_motivation = True
+# for i in xrange(times_to_run_simulation):
+#     CollaborationModel().run(i + times_to_run_simulation)
 
     # MAYBE: Export a text-based version of a single run
     # MAYBE: Use RPy to build fancy ggplot graphs automatically
