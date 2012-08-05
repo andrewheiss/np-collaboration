@@ -34,9 +34,6 @@ community_motivation = True  # Set to True to have everyone work for community v
 times_to_run_simulation = 1
 # seed(4567890)
 
-# Turn on random allocation
-shuffling = True
-
 
 #---------------------------------------------------
 #---------------------------------------------------
@@ -163,10 +160,8 @@ class CollaborationModel:
         # print(resource_pool.pool)
         # print(objective_pool.pool)
 
-        # Shuffle the lists if shuffling is enabled
-        if shuffling == True:
-            shuffle(players_list)
-            shuffle(objs_index)
+        shuffle(players_list)
+        shuffle(objs_index)
 
         # `count` keeps track of the number of times a resource is allocated to a player. It will only ever go up to `num_players`
         count = 0
@@ -1067,8 +1062,7 @@ class ResourcePool:
         letters = ascii_uppercase[:resources]
         high_count = resources // 2
 
-        if shuffling == True:
-            letters = ''.join(sample(letters, len(letters)))
+        letters = ''.join(sample(letters, len(letters)))
 
         prop_high, prop_low = letters[:high_count], letters[high_count:]
         return DivdedResources(prop_high, prop_low)
