@@ -6,25 +6,26 @@ Objectives only benefit players when they match a player's assigned resource. Fo
 
 Players are assigned resources and objectives at the outset of the simulation. The simulation builds a pool of resources distributed in frequency according to a given ratio. For example, Table X demonstrates the resource pool in a simulation with 16 players, 4 different types of objectives, and an approximate ratio of 3:1. 
 
-Resource | Quantity
---------| --------
-`A` | 6
-`B` | 6
-`C` | 2
-`D` | 2
+Resource | Quantity  
+-------- | ------  
+`A`      | 6  
+`B`      | 6  
+`C`      | 2  
+`D`      | 2  
 
 After building a pool of resources, the simulation then creates a larger pool of objectives of varying value, again distributed in frequency according to a given ratio. Table X shows the objective pool for the sample 16-person, 4-resource example above, assuming there are 5 objectives per player distributed at an approximate ratio of 3:1.
 
 Objective | Quantity | Frequency | Value  
 --------- | -------- | --------- | ---  
-`a1`      | 15        | High       | High  
-`a2`      | 15        | High       | Low  
-`b1`      | 5       | Low      | High  
-`b2`      | 5       | Low      | Low  
+`a1`      | 15       | High      | High  
+`a2`      | 15       | High      | Low  
+`b1`      | 5        | Low       | High  
+`b2`      | 5        | Low       | Low  
 `c1`      | 5        | Low       | High  
 `c2`      | 5        | Low       | Low  
 `d1`      | 15       | High      | High  
 `d2`      | 15       | High      | Low  
+
 
 Each player is then randomly assigned one resource and a given number of objectives. In the ongoing example with 16 players, final resource and objective assignments are shown in Table X. 
 
