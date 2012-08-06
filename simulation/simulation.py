@@ -614,6 +614,7 @@ class CollaborationModel:
         b_total_if_move = player_b.currentTotal(player_a.team, given_objective=a_best_if_stay, giver=player_a)  # Using these still results in 1200 points, but that's probably reality... maybe...
         b_total_if_stay = player_b.currentTotal(player_a, object_is_team=False, given_objective=a_best_if_move, giver=player_a)
         # b_total_if_move = player_b.currentTotal(player_a.team)
+        # b_total_if_stay = player_b.currentTotal(player_a, object_is_team=False)
 
         a_delta_if_move = a_total_if_move - player_a.currentTotal()  # A's hypothetical total on B's team after dropping an objective - A's current total
         a_delta_if_stay = a_total_if_stay - player_a.currentTotal()  # A's hypothetical total if B joins A, after dropping an objective - A's current total
@@ -1613,10 +1614,11 @@ def printObjectivesPool():
 # Actual simulation procedure
 #------------------------------
 # Create CSV file
-filename = "variation{0}_{1}simulation{2}_{3}_{4}_{5}.csv".format(variation,
+filename = "variation{0}_{1}simulation{2}_{3}_{4}_{5}".format(variation,
     times_to_run_simulation, "s" if times_to_run_simulation > 1 else "",
     num_players, num_resources, num_objs_per_player)
-csv_out = csv.writer(open("{0}.csv".format(filename),"w"), delimiter=',',quoting=csv.QUOTE_ALL)
+csv_file = open('{0}.csv'.format(filename), 'wb')
+csv_out = csv.writer(csv_file, delimiter=',',quoting=csv.QUOTE_ALL)
 
 # Run the simulation
 community_motivation = False  # Personal motivation
@@ -1627,6 +1629,8 @@ for i in xrange(times_to_run_simulation):
 community_motivation = True  # Community motivation
 for i in xrange(times_to_run_simulation):
     CollaborationModel().run(i + times_to_run_simulation)
+
+csv_file.close()
 
     # MAYBE: Export a text-based version of a single run
     # MAYBE: Use RPy to build fancy ggplot graphs automatically
