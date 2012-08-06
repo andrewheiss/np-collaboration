@@ -609,16 +609,11 @@ class CollaborationModel:
         a_best_if_stay = player_a.best_given_objective(joint_resources_if_b_joins_a)
         a_best_if_move = player_a.best_given_objective(joint_resources_if_a_goes_to_b)
 
-        # Player B doesn't use the given objective in their calculation
-        # a_total_if_move = player_a.currentTotal(player_b.team, objective_to_drop=a_best_if_move)
-        # a_total_if_stay = player_a.currentTotal(player_b, object_is_team=False, objective_to_drop=a_best_if_stay)
-
-        # Player B uses the given objective in their calculation
+        a_total_if_move = player_a.currentTotal(player_b.team, objective_to_drop=a_best_if_move)
+        a_total_if_stay = player_a.currentTotal(player_b, object_is_team=False, objective_to_drop=a_best_if_stay)
         b_total_if_move = player_b.currentTotal(player_a.team, given_objective=a_best_if_stay, giver=player_a)  # Using these still results in 1200 points, but that's probably reality... maybe...
         b_total_if_stay = player_b.currentTotal(player_a, object_is_team=False, given_objective=a_best_if_move, giver=player_a)
-
-        b_total_if_move = player_b.currentTotal(player_a.team)
-        b_total_if_stay = player_b.currentTotal(player_a, object_is_team=False)
+        # b_total_if_move = player_b.currentTotal(player_a.team)
 
         a_delta_if_move = a_total_if_move - player_a.currentTotal()  # A's hypothetical total on B's team after dropping an objective - A's current total
         a_delta_if_stay = a_total_if_stay - player_a.currentTotal()  # A's hypothetical total if B joins A, after dropping an objective - A's current total
@@ -1402,7 +1397,7 @@ class Player:
             raise Exception("Can't use `new_team` on a team object or without a `test_object`")
         if new_team is True and object_is_team is True:
             raise Exception("`new_team` and `object_is_team` cannot both be true.")
-        if giver and not given_objective is none:
+        if giver is None and not given_objective is None:
             raise Exception("Can't have a `giver` without a `given_objective`") 
 
         # Determine which objectives to use in the total calculation
