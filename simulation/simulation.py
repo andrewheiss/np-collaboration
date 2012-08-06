@@ -8,15 +8,6 @@
 # Brigham Young University
 #
 
-# Load required libraries and functions
-from collections import Counter, namedtuple
-from itertools import islice
-from string import ascii_uppercase
-from random import shuffle, sample, seed, choice
-from copy import deepcopy
-import csv
-
-
 #-----------------------------------------------------------
 # Set up the simulation 
 # (change these variables to create different simulations)
@@ -30,8 +21,8 @@ value_low = 10
 approximate_high_low_resource_ratio = 3
 approximate_high_low_objective_ratio = 3
 faux_pareto_rounds_without_merges = 25
-variation = 1  # Must be 1, 2, 3, or 4
-times_to_run_simulation = 10
+variation = 4  # Must be 1, 2, 3, or 4
+times_to_run_simulation = 5
 
 
 #---------------------------------------------------
@@ -44,6 +35,15 @@ times_to_run_simulation = 10
 # The algorithm chokes with high faux pareto values on variation 3, because it can be infinite
 if variation == 3:
     faux_pareto_rounds_without_merges = 5
+
+
+# Load required libraries and functions
+from collections import Counter, namedtuple
+from itertools import islice
+from string import ascii_uppercase
+from random import shuffle, sample, seed, choice
+from copy import deepcopy
+import csv
 
 
 #----------------------
