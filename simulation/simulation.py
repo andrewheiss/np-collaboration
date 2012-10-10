@@ -21,8 +21,8 @@ value_low = 10
 approximate_high_low_resource_ratio = 3
 approximate_high_low_objective_ratio = 3
 faux_pareto_rounds_without_merges = 25
-variation = 4  # Must be 1, 2, 3, or 4
-times_to_run_simulation = 5
+variation = 0  # Must be 0, 1, 2, 3, or 4. 0 exports initial allocation data; 1-4 actually run simulation algorithms.
+times_to_run_simulation = 500
 
 
 #---------------------------------------------------
@@ -257,31 +257,34 @@ class CollaborationModel:
         #--------------------------
         # Main simulation routine
         #--------------------------
-        while True:  # Loop this forever until told to break
-            total_merges += merges_this_round  # Track how many team merges happen
-            merges_this_round = 0  # Reset count, since this is a new round
+        if variation == 0:  # Variation 0 is used to export initial allocation data only
+            total_encounters = 0.0001  # Not quite zero, since it is the denominator in some exported ratios
+        else:  # If the variation is anything other than 0...
+            while True:  # Loop this forever until told to break
+                total_merges += merges_this_round  # Track how many team merges happen
+                merges_this_round = 0  # Reset count, since this is a new round
 
-            players_list = range(len(self.players))  # Build list of player indexes
-            shuffle(players_list)
+                players_list = range(len(self.players))  # Build list of player indexes
+                shuffle(players_list)
 
-            pairs_of_players = list(pairs(players_list))  # Pair each player index up randomly
-            shuffle(pairs_of_players)
+                pairs_of_players = list(pairs(players_list))  # Pair each player index up randomly
+                shuffle(pairs_of_players)
 
-            for pair in pairs_of_players:
-                a = self.players[pair[0]]
-                b = self.players[pair[1]]
+                for pair in pairs_of_players:
+                    a = self.players[pair[0]]
+                    b = self.players[pair[1]]
 
-                if a.team != b.team:  # If the players aren't already on the same team
-                    if self.variations[variation](a, b) == True:  # Run the specified variation algorithm
-                        merges_this_round += 1
-                    total_encounters += 1  # Update how many encounters occurred
-            
-            if merges_this_round == 0:  # If no merges happened this round, mark it
-                rounds_without_merges += 1
-            else:  # Otherwise, reset the count of rounds without merges. The simulation stops after x tradeless rounds *in a row*
-                rounds_without_merges = 0
-            
-            if rounds_without_merges == faux_pareto_rounds_without_merges : break  # If x rounds without merges happen, stop looping
+                    if a.team != b.team:  # If the players aren't already on the same team
+                        if self.variations[variation](a, b) == True:  # Run the specified variation algorithm
+                            merges_this_round += 1
+                        total_encounters += 1  # Update how many encounters occurred
+                
+                if merges_this_round == 0:  # If no merges happened this round, mark it
+                    rounds_without_merges += 1
+                else:  # Otherwise, reset the count of rounds without merges. The simulation stops after x tradeless rounds *in a row*
+                    rounds_without_merges = 0
+                
+                if rounds_without_merges == faux_pareto_rounds_without_merges : break  # If x rounds without merges happen, stop looping
 
 
         #----------------
