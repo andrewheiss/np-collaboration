@@ -21,8 +21,8 @@ value_low = 10
 approximate_high_low_resource_ratio = 3
 approximate_high_low_objective_ratio = 3
 faux_pareto_rounds_without_merges = 25
-variation = 0  # Must be 0, 1, 2, 3, or 4. 0 exports initial allocation data; 1-4 actually run simulation algorithms.
-times_to_run_simulation = 500
+variation = 5  # Must be 0, 1, 2, 3, 4, or 5. 0 exports initial allocation data; 1-5 actually run simulation algorithms.
+times_to_run_simulation = 100
 
 
 #---------------------------------------------------
@@ -197,7 +197,8 @@ class CollaborationModel:
             1: self.variation_1,
             2: self.variation_2,
             3: self.variation_3,
-            4: self.variation_4
+            4: self.variation_4,
+            5: self.variation_5
         }
 
         self.dropped_objectives = []  # Keep track of dropped objectives
@@ -205,9 +206,9 @@ class CollaborationModel:
 
     def test_run(self):
         """Temporary function for running a single pair of players through one of the variations."""
-        # print "Running variation {0}, with a {1} focus".format(variation, "community" if community_motivation else "self-interested")
-        self.players[1].joinTeam(self.teams[0])
-        self.players[5].joinTeam(self.teams[2])
+        print "Running variation {0}, with a {1} focus".format(variation, "community" if community_motivation else "self-interested")
+        # self.players[1].joinTeam(self.teams[0])
+        # self.players[5].joinTeam(self.teams[2])
         # self.teams[2].report()
         # self.players[1].report()
         # for i in self.players:
@@ -453,6 +454,47 @@ class CollaborationModel:
             return True
         else:
             return False
+
+
+    def variation_5(self, player_a, player_b):
+        """Simple trading with no networking. Player A meets Player B. They figure out the best one-shot trade. Player A selects the best possible objective to give away, as does Player B. If both mutually benefit, make the trade. Otherwise, walk away."""
+        traded = False
+
+        # Determine best objective to give away
+        a_best_to_give = player_a.best_given_objective(player_a.resource, player_b.resource)
+        b_best_to_give = player_b.best_given_objective(player_b.resource, player_a.resource)
+
+        # Calculate hypothetical totals with those traded objectives
+        a_total_if_no_trade = player_a.currentTotal()
+        a_total_with_trade = player_a.currentTotal(objective_to_drop=a_best_to_give, given_objective=b_best_to_give, giver=player_b)
+
+        b_total_if_no_trade = player_b.currentTotal()
+        b_total_with_trade = player_b.currentTotal(objective_to_drop=b_best_to_give, given_objective=a_best_to_give, giver=player_a)
+
+        a_delta_if_trade = a_total_with_trade - a_total_if_no_trade
+        b_delta_if_trade = b_total_with_trade - b_total_if_no_trade 
+
+        # Try to trade!
+        if community_motivation is True: 
+            # Determine community standing before and after trade
+            community_before = self.community.total()
+            community_total_with_trade = community_before + a_delta_if_trade + b_delta_if_trade            
+            community_delta_if_trade = community_total_with_trade - community_before
+
+            # If the community benefits, trade. Otherwise don't do anything
+            if community_delta_if_trade > 0:
+                player_a.giveObjective(a_best_to_give, player_b, traded_objectives_list=self.traded_objectives)
+                player_b.giveObjective(b_best_to_give, player_a, traded_objectives_list=self.traded_objectives)
+                traded = True
+
+        else:  # If community_motivation is false...
+            # If both players benefit, trade. Otherwise don't do anything
+            if a_delta_if_trade > 0 and b_delta_if_trade > 0: 
+                player_a.giveObjective(a_best_to_give, player_b, traded_objectives_list=self.traded_objectives)
+                player_b.giveObjective(b_best_to_give, player_a, traded_objectives_list=self.traded_objectives)
+                traded = True
+
+        return traded
 
 
     def variation_1(self, player_a, player_b):
@@ -1385,7 +1427,7 @@ class Player:
             test_object: A team or player object that will be used to calculate a player's hypothetical total.
             object_is_team: Boolean that defaults to true. By default, this will test a hypothetical team; if false, it will test a hypothetical player.
             new_team: Boolean that defaults to false. If true, the current player's resource will be combined with the resource of the test_object (which must be a player); if false, the current player's resource will be combined with the resources of the test_object's team.
-            alone: Boolean that defaults to false. If true, the player's total will be calculated using only their given objective; if false, the player's team's resources will be used.
+            alone: Boolean that defaults to false. If true, the player's total will be calculated using only their given resource; if false, the player's team's resources will be used.
             objective_to_drop: The integer index indicating which objective to disregard when calculating the current total (used for variations 1 and 1).
             given_objective: The integer index indicating which objective to add when calculating the current total (used for variation 2).
             giver: The player object hypothetically giving up their objective.
@@ -1405,14 +1447,19 @@ class Player:
             raise Exception("Can't have a `giver` without a `given_objective`") 
 
         # Determine which objectives to use in the total calculation
-        if not objective_to_drop is None:
+        if given_objective and objective_to_drop:  # If an objective is dropped and given away, like in variation 5...
             objectives = deepcopy(self.objectives)  # Make a copy of the dictionary
             del objectives[objective_to_drop]  # Remove the objective
-        elif not given_objective is None:
-            objectives = deepcopy(self.objectives)  # Make a copy of the dictionary
             objectives[given_objective] = giver.objectives[given_objective]
-        else:
-            objectives = self.objectives  # Use the full dictionary of objectives
+        else:  # All other variations
+            if not objective_to_drop is None:
+                objectives = deepcopy(self.objectives)  # Make a copy of the dictionary
+                del objectives[objective_to_drop]  # Remove the objective
+            elif not given_objective is None:
+                objectives = deepcopy(self.objectives)  # Make a copy of the dictionary
+                objectives[given_objective] = giver.objectives[given_objective]
+            else:
+                objectives = self.objectives  # Use the full dictionary of objectives
 
         # Determine which pool of resources to use in the total calculation
         if alone:  # If alone, just use the player's single given resource; nobody else's
@@ -1503,12 +1550,13 @@ class Player:
         objectives = ', '.join('%s' % obj[0] for obj in self.objectives.values())  # Build a comma separated list of objectives
         print "I am %s; I have resource %s; I have objectives %s; I'm on team %s; and my total value is %s."%(self.name, self.resource, objectives, self.team.name, self.currentTotal())
 
-    def best_given_objective(self, resource_pool):
+    def best_given_objective(self, resource_pool, other_resource=None):
         """
         Determines the best objective to drop or give away.
 
         Args:
             resource_pool: A list of resources to consider when determining which objective to get rid of (i.e. ['B', 'D', 'C'])
+            other_resource (optional): The resource of the other player when running variation 5
 
         Returns the index of the objective to be dropped or given away.
         """
@@ -1520,6 +1568,8 @@ class Player:
         worthless = {}  # worthless_high and worthless_low contain the player's unfulfilled high-value and low-value objectives
         worthless_high = {}
         worthless_low = {}
+
+        best_objective = None
 
         # Build general good and worthless dictionaries
         for index, details in self.objectives.items():
@@ -1545,16 +1595,36 @@ class Player:
                 else:
                     worthless_low[index] = details
 
-        # Choose an objective to get rid of, starting with one from the worthless_low dictionary
-        # Order of selection = worthless_low -> worthless_high -> good_low -> good_high
-        if len(worthless_low.keys()) > 0:
-            best_objective = worthless_low.keys()[0]
-        elif len(worthless_high.keys()) > 0:
-            best_objective = worthless_high.keys()[0]
-        elif len(good_low.keys()) > 0:
-            best_objective = good_low.keys()[0]
-        elif len(good_high.keys()) > 0:
-            best_objective = good_high.keys()[0]
+        if other_resource:
+            # Try to match an objective to the other player's resource
+            # Order of selection = worthless_low -> worthless_high -> good_low. Don't potentially give up any good_high.
+            for index, details in worthless_low.items():
+                if details[0][0].upper() == other_resource:
+                    best_objective = index
+                    break
+            if not best_objective:  # If nothing was found in worthless_low, make an offer from worthless_high
+                for index, details in worthless_high.items():
+                    if details[0][0].upper() == other_resource:
+                        best_objective = index
+                        break
+            if not best_objective:  # If nothing was found in worthless_high, make an offer from good_low
+                for index, details in good_low.items():
+                    if details[0][0].upper() == other_resource:
+                        best_objective = index
+                        break
+            # If no good match was found, use the regular selection algorithm below to give away an objective that doesn't match
+            
+        if not best_objective:
+            # Choose an objective to get rid of, starting with the worthless_low dictionary
+            # Order of selection = worthless_low -> worthless_high -> good_low -> good_high
+            if len(worthless_low.keys()) > 0:
+                best_objective = worthless_low.keys()[0]
+            elif len(worthless_high.keys()) > 0:
+                best_objective = worthless_high.keys()[0]
+            elif len(good_low.keys()) > 0:
+                best_objective = good_low.keys()[0]
+            elif len(good_high.keys()) > 0:
+                best_objective = good_high.keys()[0]
 
         return best_objective  # Return the key or index of the objective
 
