@@ -119,6 +119,7 @@ class CollaborationModel():
 
         # Initialize simulation-wide variables passed to the class
         self.num_players = num_players
+        self.num_resources = num_resources
         self.value_high = value_high
         self.value_low = value_low
         self.variation = variation
@@ -324,6 +325,7 @@ class CollaborationModel():
         csv_data.append(("percent_social_value_met", self.community.total() / float(self.community.potentialTotal(self.objs_table))))
 
         # General objective statistics
+        csv_data.append(("num_resources", self.num_resources))
         csv_data.append(("num_objectives", len(self.objective_pool.table)))
         csv_data.append(("objs_fulfilled", len(subset.fulfilled)))
         csv_data.append(("objs_held_unfulfilled", len(subset.unfulfilled)))
