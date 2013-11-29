@@ -1506,11 +1506,12 @@ class Player:
         """
         # This inexplicably throws a 'KeyError: None' error that kills the 
         # whole simulation, so it's wrapped in a try... except
+        # TODO: Figure out why this happens
         try:
           dropped = self.objectives.pop(objective_to_drop)  # Remove the objective from the current player
-        except:
-          print "Error with ", objective_to_drop
-        dropped_objectives_list.append(dropped)  # Mark it
+          dropped_objectives_list.append(dropped)  # Mark it
+        except KeyError:
+          pass
 
     def giveObjective(self, objective_to_give, receiver, traded_objectives_list):
         """Gives an objective to a specified player.
