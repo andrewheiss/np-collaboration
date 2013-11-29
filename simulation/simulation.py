@@ -1504,7 +1504,12 @@ class Player:
             objective_to_drop: Objective index to drop
             dropped_objective_list: Community object attribute keeping track of dropped objectives
         """
-        dropped = self.objectives.pop(objective_to_drop)  # Remove the objective from the current player
+        # This inexplicably throws a 'KeyError: None' error that kills the 
+        # whole simulation, so it's wrapped in a try... except
+        try:
+          dropped = self.objectives.pop(objective_to_drop)  # Remove the objective from the current player
+        except:
+          print "Error with ", objective_to_drop
         dropped_objectives_list.append(dropped)  # Mark it
 
     def giveObjective(self, objective_to_give, receiver, traded_objectives_list):
