@@ -2,40 +2,11 @@
 # 
 # Nonprofit collaboration simulation
 #-------------------------------------
-# Copyright 2011-12
+# Copyright 2011-13
 # Eva Witesman and Andrew Heiss
 # Romney Institute of Public Management
 # Brigham Young University
 #
-
-#-----------------------------------------------------------
-# Set up the simulation 
-# (change these variables to create different simulations)
-#-----------------------------------------------------------
-
-num_players = 16
-num_resources = 4
-num_objs_per_player = 5
-value_high = 20
-value_low = 10
-approximate_high_low_resource_ratio = 3
-approximate_high_low_objective_ratio = 3
-faux_pareto_rounds_without_merges = 25
-variation = 5  # Must be 0, 1, 2, 3, 4, or 5. 0 exports initial allocation data; 1-5 actually run simulation algorithms.
-times_to_run_simulation = 100
-
-
-#---------------------------------------------------
-#---------------------------------------------------
-# Run the simulation. Do not edit below this line!
-#---------------------------------------------------
-#---------------------------------------------------
-
-# Temporary sanity checking...
-# The algorithm chokes with high faux pareto values on variation 3, because it can be infinite
-if variation == 3:
-    faux_pareto_rounds_without_merges = 5
-
 
 # Load required libraries and functions
 from collections import Counter, namedtuple
@@ -50,7 +21,7 @@ import csv
 # Classes and methods
 #----------------------
 
-class CollaborationModel:
+class CollaborationModel():
     """A CollaborationModel object contains the core of the simulation and ties all other classes--resources, objectives, communities, teams, and players--together and allows players to interact in a way to maximize social or personal value.
 
     In the simulation, players are assigned one resource and an arbitrary number of objectives. A *resource* is unique to each player and essentially represents that player's competitive advantage, or supply in the market. Players have a set number of differently valued *objectives,* which correspond to market demand. Resources are represented with uppercase Latin letters (i.e. `A`, `B`, `C`) and objectives with lowercase Latin letters and numerals (i.e. `a1`, `a2`, `b1`, `c2`). Objectives with a subscripted 1 (i.e. `a1`) are classified as high-value, while objectives with a subscripted 2 are classified as low-value. Objective values can be arbitrarily set in the simulation, but by default high-value objectives are worth 20 points, while low-value objectives are worth 10.
@@ -135,13 +106,31 @@ class CollaborationModel:
         dropped_objectives: A list of lists to track dropped objectives: e.g., [['d2', 10], ['b1', 20], ['a1', 20]]. Objectives are no longer indexed because uniqueness doesn't matter.
         traded_objectives: A list of lists to track dropped objectives. Objectives are no longer indexed because uniqueness doesn't matter and an objective can be traded multiple times.
     """
-    def __init__(self):
+    def __init__(self, num_players, num_resources, num_objs_per_player, 
+        approximate_high_low_resource_ratio, approximate_high_low_objective_ratio,
+        value_high, value_low, variation, faux_pareto_rounds_without_merges, 
+        community_motivation, csv_out, csv_header):
         #------------------------------------------------------------------
         # Create resource pool, objective pool, and dictionary of players
         #------------------------------------------------------------------
-        self.resource_pool = ResourcePool(num_resources, num_players)
-        self.objective_pool = ObjectivePool(self.resource_pool)
+        self.resource_pool = ResourcePool(num_resources, num_players, approximate_high_low_resource_ratio)
+        self.objective_pool = ObjectivePool(self.resource_pool, num_players, num_objs_per_player, approximate_high_low_objective_ratio, value_high, value_low)
         self.objs_table = self.objective_pool.table
+
+        # Initialize simulation-wide variables passed to the class
+        self.num_players = num_players
+        self.value_high = value_high
+        self.value_low = value_low
+        self.variation = variation
+        self.faux_pareto_rounds_without_merges = faux_pareto_rounds_without_merges
+        self.community_motivation = community_motivation
+        self.csv_out = csv_out
+        self.csv_header = csv_header
+
+        # Temporary sanity checking...
+        # The algorithm chokes with high faux pareto values on variation 3, because it can be infinite
+        if self.variation == 3:
+          self.faux_pareto_rounds_without_merges = 5
 
         # Initialize empty players dictionary (only a dictionary so it can be indexed)
         players = {}
@@ -206,7 +195,7 @@ class CollaborationModel:
 
     def test_run(self):
         """Temporary function for running a single pair of players through one of the variations."""
-        print "Running variation {0}, with a {1} focus".format(variation, "community" if community_motivation else "self-interested")
+        print "Running variation {0}, with a {1} focus".format(self.variation, "community" if self.community_motivation else "self-interested")
         # self.players[1].joinTeam(self.teams[0])
         # self.players[5].joinTeam(self.teams[2])
         # self.teams[2].report()
@@ -214,7 +203,7 @@ class CollaborationModel:
         # for i in self.players:
         # #     self.players[i].report()
         # print self.community.total()
-        self.variations[variation](self.players[0], self.players[2])
+        self.variations[self.variation](self.players[0], self.players[2])
 
         # # for team in self.teams:
         # #     team.report()
@@ -244,7 +233,7 @@ class CollaborationModel:
         before_total = str(self.community.total())
         individual_statistics_before = self.community.individualStats()
 
-        # print "Running variation {0} with a {1} focus".format(variation, "community" if community_motivation else "self-interested"), "\n"
+        # print "Running self.variation {0} with a {1} focus".format(self.variation, "community" if self.community_motivation else "self-interested"), "\n"
         
         # # Temporary team reporting
         # print "-----------------------------------------------------------------------------------------------------------------------"
@@ -258,7 +247,7 @@ class CollaborationModel:
         #--------------------------
         # Main simulation routine
         #--------------------------
-        if variation == 0:  # Variation 0 is used to export initial allocation data only
+        if self.variation == 0:  # Variation 0 is used to export initial allocation data only
             total_encounters = 0.0001  # Not quite zero, since it is the denominator in some exported ratios
         else:  # If the variation is anything other than 0...
             while True:  # Loop this forever until told to break
@@ -276,7 +265,7 @@ class CollaborationModel:
                     b = self.players[pair[1]]
 
                     if a.team != b.team:  # If the players aren't already on the same team
-                        if self.variations[variation](a, b) == True:  # Run the specified variation algorithm
+                        if self.variations[self.variation](a, b) == True:  # Run the specified variation algorithm
                             merges_this_round += 1
                         total_encounters += 1  # Update how many encounters occurred
                 
@@ -285,7 +274,7 @@ class CollaborationModel:
                 else:  # Otherwise, reset the count of rounds without merges. The simulation stops after x tradeless rounds *in a row*
                     rounds_without_merges = 0
                 
-                if rounds_without_merges == faux_pareto_rounds_without_merges : break  # If x rounds without merges happen, stop looping
+                if rounds_without_merges == self.faux_pareto_rounds_without_merges : break  # If x rounds without merges happen, stop looping
 
 
         #----------------
@@ -301,9 +290,9 @@ class CollaborationModel:
 
         # Basic simulation information
         csv_data.append(("id", run_number + 1))
-        csv_data.append(("variation", variation))
-        csv_data.append(("player_count", num_players))
-        csv_data.append(("community_motivation", 1 if community_motivation else 0))
+        csv_data.append(("variation", self.variation))
+        csv_data.append(("player_count", self.num_players))
+        csv_data.append(("community_motivation", 1 if self.community_motivation else 0))
         csv_data.append(("encounters", total_encounters))
         csv_data.append(("switches", total_merges))
         csv_data.append(("switch_ratio", total_merges / float(total_encounters)))
@@ -365,59 +354,61 @@ class CollaborationModel:
             # Count stuff
             for obj in self.objective_pool.obj_list:
                 if resource[0] == obj[0][0].upper():
-                    if obj[1] == value_high: 
+                    if obj[1] == self.value_high: 
                         obj_count_high += 1 
                     else:
                         obj_count_low += 1
 
             for obj in subset.fulfilled:
                 if resource[0] == obj[0][0].upper():
-                    if obj[1] == value_high: 
+                    if obj[1] == self.value_high: 
                         fulfilled_count_high += 1 
                     else:
                         fulfilled_count_low += 1
 
             for obj in subset.unfulfilled: 
                 if resource[0] == obj[0][0].upper():
-                    if obj[1] == value_high: 
+                    if obj[1] == self.value_high: 
                         unfulfilled_count_high += 1 
                     else:
                         unfulfilled_count_low += 1
 
             for obj in self.dropped_objectives:
                 if resource[0] == obj[0][0].upper():
-                    if obj[1] == value_high: 
+                    if obj[1] == self.value_high: 
                         dropped_count_high += 1 
                     else:
                         dropped_count_low += 1
 
             for obj in self.traded_objectives: 
                 if resource[0] == obj[0][0].upper():
-                    if obj[1] == value_high: 
+                    if obj[1] == self.value_high: 
                         traded_count_high += 1 
                     else:
                         traded_count_low += 1
 
             # Add counts the csv_data list of tuples
-            csv_data.append(("{0}_value".format(high_value_objective), value_high))
+            csv_data.append(("{0}_value".format(high_value_objective), self.value_high))
             csv_data.append(("{0}_count".format(high_value_objective), obj_count_high))
             csv_data.append(("{0}_high_freq".format(high_value_objective), 1 if resource[1] == "high_freq" else 0))
             csv_data.append(("{0}_trades".format(high_value_objective), traded_count_high))
             csv_data.append(("{0}_dropped".format(high_value_objective), dropped_count_high))
             csv_data.append(("{0}_fulfilled".format(high_value_objective), fulfilled_count_high))
+            csv_data.append(("{0}_pct_fulfilled".format(high_value_objective), fulfilled_count_high/float(obj_count_high)))
             csv_data.append(("{0}_held_unfulfilled".format(high_value_objective), unfulfilled_count_high))
 
-            csv_data.append(("{0}_value".format(low_value_objective), value_low))
+            csv_data.append(("{0}_value".format(low_value_objective), self.value_low))
             csv_data.append(("{0}_count".format(low_value_objective), obj_count_low))
             csv_data.append(("{0}_high_freq".format(low_value_objective), 1 if resource[1] == "high_freq" else 0))
             csv_data.append(("{0}_trades".format(low_value_objective), traded_count_low))
             csv_data.append(("{0}_dropped".format(low_value_objective), dropped_count_low))
             csv_data.append(("{0}_fulfilled".format(low_value_objective), fulfilled_count_low))
+            csv_data.append(("{0}_pct_fulfilled".format(low_value_objective), fulfilled_count_low/float(obj_count_low)))
             csv_data.append(("{0}_held_unfulfilled".format(low_value_objective), unfulfilled_count_low))
  
         # Finally output the csv_data list to the CSV file
-        if run_number == 0 : csv_out.writerow([data[0] for data in csv_data])  # Output headers on the first run
-        csv_out.writerow([data[1] for data in csv_data])  # Output the data
+        if run_number == 0 and self.csv_header: self.csv_out.writerow([data[0] for data in csv_data])  # Output headers on the first run
+        self.csv_out.writerow([data[1] for data in csv_data])  # Output the data
 
         # print "-----------------------------------------------------------------------------------------------------------------------"
         # print "Final team allocations:"
@@ -475,7 +466,7 @@ class CollaborationModel:
         b_delta_if_trade = b_total_with_trade - b_total_if_no_trade 
 
         # Try to trade!
-        if community_motivation is True: 
+        if self.community_motivation is True: 
             # Determine community standing before and after trade
             community_before = self.community.total()
             community_total_with_trade = community_before + a_delta_if_trade + b_delta_if_trade            
@@ -487,7 +478,7 @@ class CollaborationModel:
                 player_b.giveObjective(b_best_to_give, player_a, traded_objectives_list=self.traded_objectives)
                 traded = True
 
-        else:  # If community_motivation is false...
+        else:  # If self.community_motivation is false...
             # If both players benefit, trade. Otherwise don't do anything
             if a_delta_if_trade > 0 and b_delta_if_trade > 0: 
                 player_a.giveObjective(a_best_to_give, player_b, traded_objectives_list=self.traded_objectives)
@@ -519,7 +510,7 @@ class CollaborationModel:
         b_delta_if_move = b_total_if_move - player_b.currentTotal()  # B's hypothetical total on A's - B's current total
         b_delta_if_stay = b_total_if_stay - player_b.currentTotal()  # B's hypothetical total if A joined B - B's current total
 
-        if community_motivation is True:  # MAYBE: This function is fine, but it's totally reusable. Make this more DRY-ish for the other variations.
+        if self.community_motivation is True:  # MAYBE: This function is fine, but it's totally reusable. Make this more DRY-ish for the other variations.
             community_before = self.community.total()
 
             # Calculate deltas for all members of the team
@@ -562,7 +553,7 @@ class CollaborationModel:
                 # print "Don't do anything"
                 merged = False
 
-        else:  # If community_motivation is false...
+        else:  # If self.community_motivation is false...
             # # Player A's soliloquy
             # print "\nI'm {0} and I get to collaborate with {1}.".format(player_a.name, player_b.name)
             # print "On my current team, I have {0} points, objectives {1} and access to {2} ({3}).".format(player_a.currentTotal(), player_a.objectives, player_a.team.resources(), player_a.resource)
@@ -672,7 +663,7 @@ class CollaborationModel:
         # print "Objective B gets if B comes to A", player_a.objectives[a_best_if_stay]
         # print "Objective B gets if A goes to B", player_a.objectives[a_best_if_move]
 
-        if community_motivation is True:
+        if self.community_motivation is True:
             community_before = self.community.total()
 
             # Calculate deltas for all members of the team
@@ -715,7 +706,7 @@ class CollaborationModel:
                 # print "Don't do anything"
                 merged = False
 
-        else:  # If community_motivation is false...
+        else:  # If self.community_motivation is false...
             # # Player A's soliloquy
             # print "\nI'm {0} and I get to collaborate with {1}.".format(player_a.name, player_b.name)
             # print "On my current team, I have {0} points, objectives {1} and access to {2} ({3}).".format(player_a.currentTotal(), player_a.objectives, player_a.team.resources(), player_a.resource)
@@ -833,7 +824,7 @@ class CollaborationModel:
         b_delta_if_move = b_total_if_move - player_b.currentTotal()  # B's hypothetical total on A's - B's current total
         b_delta_if_stay = b_total_if_stay - player_b.currentTotal()  # B's hypothetical total if A joined B - B's current total
 
-        if community_motivation is True:
+        if self.community_motivation is True:
             community_before = self.community.total()
 
             # Calculate deltas for all members of the team
@@ -872,7 +863,7 @@ class CollaborationModel:
                 # print "Don't do anything"
                 merged = False
 
-        else: # If community_motivation is false...
+        else: # If self.community_motivation is false...
             # # Player A's soliloquy
             # print "\nI'm {0} and I get to collaborate with {1}.".format(player_a.name, player_b.name)
             # print "On my current team, I have {0} points and access to {1}".format(player_a.currentTotal(), player_a.team.resources())
@@ -946,7 +937,7 @@ class CollaborationModel:
         a_delta_if_new_team = a_new_team - a_current
         b_delta_if_new_team = b_new_team - b_current
 
-        if community_motivation is True:
+        if self.community_motivation is True:
             community_before = self.community.total()
             # print "Player A currently", a_current
             # print "Player B currently", b_current
@@ -1094,7 +1085,7 @@ class ResourcePool:
     Returns: 
         A resource pool object
     """
-    def __init__(self, resources, players):
+    def __init__(self, resources, players, approximate_high_low_resource_ratio):
         """Create the resource pool object
         
         Args:
@@ -1114,10 +1105,10 @@ class ResourcePool:
 
         self.resources_list = sorted(resources_list)
 
-        r = self.create_distribution_ratios(divided.low, divided.high)
+        r = self.create_distribution_ratios(divided.low, divided.high, approximate_high_low_resource_ratio)
         self.pool = dict(sorted(Counter(islice(r, players)).items()))
 
-    def create_distribution_ratios(self, prop_low, prop_high):
+    def create_distribution_ratios(self, prop_low, prop_high, approximate_high_low_resource_ratio):
         """Add a fraction priority to the given high frequency resources
 
         Args:
@@ -1168,7 +1159,7 @@ class ObjectivePool:
     Returns: 
         An objective pool object
     """
-    def __init__(self, resource_pool):
+    def __init__(self, resource_pool, num_players, num_objs_per_player, approximate_high_low_objective_ratio, value_high, value_low):
         """Create the objective pool object
         
         Args:
@@ -1201,7 +1192,7 @@ class ObjectivePool:
                 objectives_low.append(i.lower() + str(j))
 
         # Distribute the objectives to the newly created objectives
-        o = self.create_distribution_ratios(objectives_low, objectives_high)
+        o = self.create_distribution_ratios(objectives_low, objectives_high, approximate_high_low_objective_ratio)
         self.pool = dict(sorted(Counter(islice(o, self.num_objs)).items()))
 
         # Create a list of named dictionary pairs for each objective in the pool
@@ -1218,7 +1209,7 @@ class ObjectivePool:
         self.table = objs_table
         self.obj_list = objs_list
 
-    def create_distribution_ratios(self, prop_low, prop_high):
+    def create_distribution_ratios(self, prop_low, prop_high, approximate_high_low_objective_ratio):
         """Add a fraction priority to the given high frequency resources
 
         Args:
@@ -1680,30 +1671,3 @@ def printObjectivesPool():
     for row in objs_table:
         print "%02d"%count, row['name'], row['value']
         count += 1
-
-
-#------------------------------------------------------------------------------
-#------------------------------
-# Actual simulation procedure
-#------------------------------
-# Create CSV file
-filename = "variation{0}_{1}simulation{2}_{3}_{4}_{5}".format(variation,
-    times_to_run_simulation, "s" if times_to_run_simulation > 1 else "",
-    num_players, num_resources, num_objs_per_player)
-csv_file = open('{0}.csv'.format(filename), 'wb')
-csv_out = csv.writer(csv_file, delimiter=',',quoting=csv.QUOTE_ALL)
-
-# Run the simulation
-community_motivation = False  # Personal motivation
-for i in xrange(times_to_run_simulation):
-    # CollaborationModel().test_run()
-    CollaborationModel().run(i)
-
-community_motivation = True  # Community motivation
-for i in xrange(times_to_run_simulation):
-    CollaborationModel().run(i + times_to_run_simulation)
-
-csv_file.close()
-
-    # MAYBE: Export a text-based version of a single run
-    # MAYBE: Use RPy to build fancy ggplot graphs automatically
