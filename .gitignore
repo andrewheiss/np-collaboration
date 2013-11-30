@@ -2,4 +2,5 @@
 *.pyc
 sandbox/
 simulation/*.csv
+R/*.html
 Academics/
