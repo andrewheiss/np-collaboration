@@ -1137,7 +1137,8 @@ class ResourcePool:
         letters = ascii_uppercase[:resources]
         high_count = resources // 2
 
-        letters = ''.join(sample(letters, len(letters)))
+        # letters = ''.join(sample(letters, len(letters)))  # Don't randomly assign resources to high and low
+        letters = ''.join(letters)
 
         prop_high, prop_low = letters[:high_count], letters[high_count:]
         return DivdedResources(prop_high, prop_low)
