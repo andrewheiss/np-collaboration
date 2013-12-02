@@ -32,12 +32,17 @@ generate.plot.data <- function(x) {
   return(list('motivation'=df$motivation, 'variation'=df$variation, 'resource_prevalence'=resource.prevalence, 'objective_prevalence'=objective.prevalence, 'objective_value'=objective.value, 'dv'=dv, 'pretty.label'=pretty.label, 'resource'=resource.name, 'pct_fulfilled'=df$d..x..))
 }
 
-rows.list1 <- lapply(objective.list, FUN=generate.plot.data)
-rows.table1 <- ldply(rows.list1, data.frame)
+plot.data.list <- lapply(objective.list, FUN=generate.plot.data)
+plot.data <- ldply(plot.data.list, data.frame)
 
-p <- ggplot(data=subset(rows.table1, variation!='Baseline' & motivation=='Individual'), aes(x=pretty.label, y=pct_fulfilled, fill=resource))
-p <- ggplot(data=subset(rows.table1, variation!='Baseline' & motivation=='Community'), aes(x=pretty.label, y=pct_fulfilled, fill=resource))
-p <- ggplot(data=rows.table1, aes(x=pretty.label, y=pct_fulfilled, fill=resource))
+# Add a tiny bit of noise for geom_violin
+too.perfect <- which(plot.data$pct_fulfilled == 1)
+noise <- rnorm(length(too.perfect))/100000
+plot.data[too.perfect,'pct_fulfilled'] <- plot.data[too.perfect,'pct_fulfilled'] - noise
+
+# p <- ggplot(data=subset(plot.data, variation!='Baseline' & motivation=='Individual'), aes(x=pretty.label, y=pct_fulfilled, fill=resource))
+# p <- ggplot(data=subset(plot.data, variation!='Baseline' & motivation=='Community'), aes(x=pretty.label, y=pct_fulfilled, fill=resource))
+p <- ggplot(data=plot.data, aes(x=pretty.label, y=pct_fulfilled, fill=resource))
 
 # Bar plot with error bars
 p + stat_summary(aes(group=1), fun.y=mean, geom="bar") + 
