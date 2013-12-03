@@ -1,7 +1,9 @@
-# Load libraries
+# Load data and libraries
+source("load_data.R")
 library(ggplot2)
 library(scales)
 library(reshape2)
+library(plyr)
 
 generate.plot.data <- function(x) {
   df <- ddply(simulation, ~ variation + community_motivation, 
@@ -43,21 +45,22 @@ plot.data[too.perfect,'pct_fulfilled'] <- plot.data[too.perfect,'pct_fulfilled']
 # p <- ggplot(data=subset(plot.data, variation!='Baseline' & motivation=='Individual'), aes(x=pretty.label, y=pct_fulfilled, fill=resource))
 # p <- ggplot(data=subset(plot.data, variation!='Baseline' & motivation=='Community'), aes(x=pretty.label, y=pct_fulfilled, fill=resource))
 p <- ggplot(data=plot.data, aes(x=pretty.label, y=pct_fulfilled, fill=resource))
-
-# Bar plot with error bars
-p + stat_summary(aes(group=1), fun.y=mean, geom="bar") + 
-  scale_y_continuous(labels=percent) + labs(x=NULL, y=NULL) + 
-  stat_summary(fun.data = mean_sdl, geom = "errorbar", mult = 1) + 
-  facet_wrap(~motivation+variation, nrow=2) + guides(fill=FALSE) + theme_bw()
-
-# Bar plot with jittered points
-p + stat_summary(aes(group=1), fun.y=mean, geom="bar") + 
-  geom_point(position="jitter", alpha=0.1) + 
-  scale_y_continuous(labels=percent) + labs(x=NULL, y=NULL) + 
-  facet_wrap(~motivation+variation, nrow=2) + guides(fill=FALSE) + theme_bw()
-
 # Violin plot
-p + geom_violin(scale="width") + 
+violin <- p + geom_violin(scale="width") + 
   stat_summary(aes(group=1), fun.y=mean, geom="point", size=5) + 
   scale_y_continuous(labels=percent) + labs(x=NULL, y=NULL) + 
   facet_wrap(~motivation+variation, nrow=2) + guides(fill=FALSE) + theme_bw()
+
+ggsave(plot=violin, filename="../Output/figure_1.pdf")
+
+# Bar plot with error bars
+# p + stat_summary(aes(group=1), fun.y=mean, geom="bar") + 
+#   scale_y_continuous(labels=percent) + labs(x=NULL, y=NULL) + 
+#   stat_summary(fun.data = mean_sdl, geom = "errorbar", mult = 1) + 
+#   facet_wrap(~motivation+variation, nrow=2) + guides(fill=FALSE) + theme_bw()
+
+# Bar plot with jittered points
+# p + stat_summary(aes(group=1), fun.y=mean, geom="bar") + 
+#   geom_point(position="jitter", alpha=0.1) + 
+#   scale_y_continuous(labels=percent) + labs(x=NULL, y=NULL) + 
+#   facet_wrap(~motivation+variation, nrow=2) + guides(fill=FALSE) + theme_bw()

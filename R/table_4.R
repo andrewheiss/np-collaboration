@@ -1,37 +1,19 @@
-# Load libraries
+# Load data and libraries
+source("load_data.R")
 library(plyr)
 library(xtable)
 
-# Load data
-setwd("~/Research/Nonprofit collaboration/R")
-simulation <- read.csv('../simulation/all_variations.csv', 
-                       colClasses=c("variation"="factor", 
-                                    "community_motivation"="factor"))
-
-# Baseline = variation 0
-# Market = variation 5
-# Costless collaboration = variation 3
-# Collaboration with cost = variation 1
-
-# Determine average social value met
-# ddply(simulation, ~ variation + community_motivation, summarise, 
-#       mean=mean(percent_social_value_met), sd=sd(percent_social_value_met))
-
-# Generate lists of objective statistics
-num.resources <- simulation[1, 'num_resources']
-objective.list <- paste(rep(letters[1:num.resources], each=2),
-                        rep(c(1, 2), num.resources), '_pct_fulfilled', sep='')
-count.list <- paste(rep(letters[1:num.resources], each=2),
-                        rep(c(1, 2), num.resources), '_count', sep='')
-max.count <- max(simulation[1, count.list])
-
-
+# Format table output: mean (sd)
+# Accepts a 1 row dataframe, like so:
+#    mean    sd
+#    2.3234  0.6583
 cleaned <- function(x) {
-  top <- round(x[,1], 3)
-  bottom <- round(x[,2], 3)
-  paste(top, ' (', bottom, ')', sep='')
+  average <- round(x[,1], 3)
+  stdev <- round(x[,2], 3)
+  paste(average, ' (', stdev, ')', sep='')
 }
 
+# Function for lapply, which loops through each objective and outputs a summary row
 generate.row <- function(x) {
   # Get mean and standard deviation for chunk
   # See http://stackoverflow.com/questions/10178203/sending-in-column-name-to-ddply-from-function
@@ -53,13 +35,8 @@ generate.row <- function(x) {
   objective.prevalence <- ifelse(obj.count == max.count, 'High', 'Low')
   
   objective.value <- ifelse(substr(x, 2, 2) == 1, 'High', 'Low')
-
-#   return(list('resource_prevalence'=resource.prevalence, 'objective_prevalence'=objective.prevalence, 
-#               'objective_value'=objective.value, 'dv'=dv, 
-#               'market_individual'=df[7,3:4], 'market_social'=df[8,3:4], 
-#               'costless_individual'=df[5,3:4], 'costless_social'=df[6,3:4],
-#               'with_cost_individual'= df[3,3:4], 'with_cost_social'= df[4,3:4]))
   
+  # Return list of everything
   return(list('resource_prevalence'=resource.prevalence, 'objective_prevalence'=objective.prevalence, 
               'objective_value'=objective.value, 'dv'=dv, 
               'market_social'=cleaned(df[8,3:4]), 'costless_social'=cleaned(df[6,3:4]),
@@ -67,13 +44,11 @@ generate.row <- function(x) {
               'costless_individual'=cleaned(df[5,3:4]), 'with_cost_individual'=cleaned(df[3,3:4])))
 }
 
+# Create a list of all the data
 rows.list <- lapply(objective.list, FUN=generate.row)
+
+# Convert that list to a data frame
 rows.table <- ldply(rows.list, data.frame)
-rows.table
 
-print(xtable(rows.table, digits=3), type="html", file="table4.html", include.rownames=FALSE)
-
-# system("/Users/andrew/.cabal/bin/pandoc -s table1.html -o table1.rtf && rm table1.html")
-# rtf <- RTF('blah.rtf')
-# addTable(rtf, rows.table, row.names=FALSE)
-# done(rtf)
+# Export the table
+print(xtable(rows.table, digits=3), type="html", file="../Output/table_4.html", include.rownames=FALSE)
