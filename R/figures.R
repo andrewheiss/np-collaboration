@@ -51,7 +51,7 @@ violin <- p + geom_violin(scale="width") +
   scale_y_continuous(labels=percent) + labs(x=NULL, y=NULL) + 
   facet_wrap(~motivation+variation, nrow=2) + guides(fill=FALSE) + theme_bw()
 
-ggsave(plot=violin, filename="../Output/figure_1.pdf")
+ggsave(plot=violin, filename="../Output/figure_1.pdf", width=7, height=5, scale=2)
 
 # Bar plot with error bars
 # p + stat_summary(aes(group=1), fun.y=mean, geom="bar") + 
