@@ -71,7 +71,7 @@ if __name__ == '__main__':
 
 # Loop through the temporary csv files, combine them, and delete them
 filenames = ['variation_{0}.csv'.format(variation) for variation in variations]
-with open('all_variations.csv', 'w') as fout:
+with open('../Output/all_variations.csv', 'w') as fout:
     for line in fileinput.input(filenames):
         fout.write(line)
 [os.remove(fn) for fn in filenames]
