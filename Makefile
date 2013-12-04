@@ -3,17 +3,25 @@
 #--------------------
 # Color definitions
 #--------------------
-NO_COLOR    = \x1b[0m
-BOLD_COLOR	= \x1b[37;01m
-OK_COLOR    = \x1b[32;01m
-WARN_COLOR  = \x1b[33;01m
-ERROR_COLOR = \x1b[31;01m
+ifeq ($(OS),Windows_NT)
+	NO_COLOR    = ''
+	BOLD_COLOR	= ''
+	OK_COLOR    = ''
+	WARN_COLOR  = ''
+	ERROR_COLOR = ''
+else
+	NO_COLOR    = \x1b[0m
+	BOLD_COLOR	= \x1b[37;01m
+	OK_COLOR    = \x1b[32;01m
+	WARN_COLOR  = \x1b[33;01m
+	ERROR_COLOR = \x1b[31;01m
+endif
 
 #--------------
 # Compilation
 #--------------
 all: simulation output
-simulation: simulation/all_variations.csv
+simulation: Output/all_variations.csv
 output: Output/table_4.html Output/figure_1.pdf finished
 
 #-------------------
