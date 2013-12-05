@@ -54,7 +54,7 @@ When running scripts from the command line, Windows tries to make R install libr
 
 1. Right click on Command Prompt and select "Run as administrator"
 2. Type `R` to open an R console.
-3. Paste and run this command: `install.packages(c('ggplot2', 'scales', 'reshape2', 'plyr', 'xtable'), repos="http://cran.rstudio.com/")`
+3. Paste and run this command: `install.packages(c('ggplot2', 'scales', 'reshape2', 'plyr', 'xtable', 'rtf'), repos="http://cran.rstudio.com/")`
 4. Type `q()`
 5. Close the special administrator command prompt
 

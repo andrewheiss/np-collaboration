@@ -4,7 +4,7 @@
 
 # Install and load required packages
 library(methods)
-required.packages <- c('ggplot2', 'scales', 'reshape2', 'plyr', 'xtable')
+required.packages <- c('ggplot2', 'scales', 'reshape2', 'plyr', 'xtable', 'rtf')
 new.packages <- required.packages[!(required.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages, repos="http://cran.rstudio.com/")
 

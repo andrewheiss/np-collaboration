@@ -2,6 +2,7 @@
 source("load_data.R")
 library(plyr)
 library(xtable)
+library(rtf)
 
 # Format table output: mean (sd)
 # Accepts a 1 row dataframe, like so:
@@ -51,5 +52,16 @@ rows.list <- lapply(objective.list, FUN=generate.row)
 # Convert that list to a data frame
 rows.table <- ldply(rows.list, data.frame)
 
-# Export the table
-print(xtable(rows.table, digits=3), type="html", file="../Output/table_4.html", include.rownames=FALSE)
+# Export the table as HTML
+table.note <- "N=4000; 500 runs per variation and motivation; standard deviation in parentheses."
+print(xtable(rows.table, caption=paste("Table 4: Simulation results", table.note, sep="<br/>")), 
+      type="html", file="../Output/table_4.html", include.rownames=FALSE, caption.placement="top")
+
+# Export the table as a Word file
+output <- RTF("../Output/table_4.docx", width=11, height=8.5)
+addText(output, "Table 4: ", bold=TRUE)
+addText(output, "Simulation results")
+addNewLine(output)
+addTable(output, rows.table, font.size=9, row.names=F, NA.string="-")
+addText(output, table.note)
+done(output)
