@@ -39,8 +39,9 @@ generate.row <- function(x) {
   # Return list of everything
   return(list('resource_prevalence'=resource.prevalence, 'objective_prevalence'=objective.prevalence, 
               'objective_value'=objective.value, 'dv'=dv, 
-              'market_social'=cleaned(df[8,3:4]), 'costless_social'=cleaned(df[6,3:4]),
-              'with_cost_social'=cleaned(df[4,3:4]), 'market_individual'=cleaned(df[7,3:4]), 
+              'baseline_social'=cleaned(df[2,3:4]), 'market_social'=cleaned(df[8,3:4]), 
+              'costless_social'=cleaned(df[6,3:4]), 'with_cost_social'=cleaned(df[4,3:4]), 
+              'baseline_individual'=cleaned(df[1,3:4]), 'market_individual'=cleaned(df[7,3:4]), 
               'costless_individual'=cleaned(df[5,3:4]), 'with_cost_individual'=cleaned(df[3,3:4])))
 }
 
