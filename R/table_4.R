@@ -51,6 +51,12 @@ rows.list <- lapply(objective.list, FUN=generate.row)
 
 # Convert that list to a data frame
 rows.table <- ldply(rows.list, data.frame)
+colnames(rows.table) <- c("Resource prevalence", "Objective prevalence", 
+                          "Objective value", "Objective", "Baseline (social)",
+                          "Market (social)", "Costless (social)", 
+                          "With cost (social)", "Baseline (individual)",
+                          "Market (individual)", "Costless (individual)",
+                          "With cost (individual)")
 
 # Export the table as HTML
 table.note <- "N=4000; 500 runs per variation and motivation; standard deviation in parentheses."
