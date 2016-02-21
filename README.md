@@ -5,14 +5,16 @@
 
 ------
 
+> Eva Witesman and Andrew Heiss, “Nonprofit Collaboration and the Resurrection of Market Failure: How a Resource-Sharing Environment Can Suppress Social Objectives,” *Voluntas: International Journal of Voluntary and Nonprofit Organizations*, 2016, 1–29, doi:[10.1007/s11266-016-9684-5](https://dx.doi.org/10.1007/s11266-016-9684-5).
+
 ## Abstract
 
-Collaboration is among the core values of many in the nonprofit sector ([Oster 1995](http://scholar.google.com/scholar?hl=en&q=Strategic%20management%20for%20nonprofit%20organizations%3A%20Theory%20and%20cases), [Vangen and Huxham 2005](http://papers.ssrn.com/sol3/papers.cfm?abstract_id=1306963)). Though research has examined the prevalence of collaboration and network governance in the nonprofit sector, little empirical work has examined the potential economic outcomes of a resource sharing environment. This paper uses agent-based Monte Carlo simulation to demonstrate that while collaboration and resource sharing can maximize achievement of common social objectives in limited resource environments, it may be detrimental to the achievement of most other social objectives under other institutional arrangements and resource allocations. These findings suggest that some social objectives that are not met in market or government settings may also not be met in nonprofit settings when collaboration is encouraged. This result has key implications for the matching of social institutions and social objectives. 
+Collaboration and its promotion by funders continue to accelerate. Although research has identified significant transaction costs associated with collaboration, little empirical work has examined the broader, societal-level economic outcomes of a resource-sharing environment. Does an environment that encourages collaboration shift our focus toward certain types of social objectives and away from others? This paper uses agent-based Monte Carlo simulation to demonstrate that collaboration is particularly useful when resources are rare but a social objective is commonly held. However, collaboration can lead to bad outcomes when the objective is not commonly shared; in such cases, markets outperform collaborative arrangements. These findings suggest that encouraging a resource-sharing environment can lead to inefficiencies even worse than market failure. We also demonstrate that failure to account for transaction costs when prescribing collaboration can result in quantifiably lower outcome levels than expected.
 
 
 ## Usage
 
-You can generate the simulation data, plots, and tables used in the publisehd version with one simple command. After following the OS-specific prerequisites listed below, open a terminal window (or command prompt in Windows), navigate to this project, and type `make`. It's that easy. For example, if you saved this project in your Downloads folder, type:
+You can generate the simulation data, plots, and tables used in the publisehd version with one simple command. After following the OS-specific prerequisites listed below, open a terminal window (or command prompt in Windows), navigate to this project, and type `make`. For example, if you saved this project in your Downloads folder, type:
 
 	cd ~/Downloads/np-collaboration
 	make
